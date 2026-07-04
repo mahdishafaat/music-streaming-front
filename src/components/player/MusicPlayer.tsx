@@ -4,17 +4,26 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-// توابع جدید رو از کانتکست می‌گیریم
 import { usePlayer } from "@/context/PlayerContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function MusicPlayer() {
-  const { currentSong, isPlaying, togglePlay, playNext, playPrevious } =
-    usePlayer();
+  const {
+    currentSong,
+    isPlaying,
+    togglePlay,
+    playNext,
+    playPrevious,
+    isShuffle,
+    toggleShuffle,
+    repeatMode,
+    cycleRepeat,
+  } = usePlayer();
+  const { user } = useAuth(); // گرفتن اطلاعات کاربر برای چک کردن اشتراک طلایی
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [progress, setProgress] = useState(0);
-  // استیت‌های مربوط به کنترل صدا
-  const [volume, setVolume] = useState(1); // از 0 تا 1
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
@@ -22,14 +31,13 @@ export default function MusicPlayer() {
       if (isPlaying) {
         audioRef.current
           .play()
-          .catch((err) => console.log("Audio play error:", err));
+          .catch((e) => console.log("Audio play error:", e));
       } else {
         audioRef.current.pause();
       }
     }
   }, [isPlaying, currentSong]);
 
-  // وقتی State ولوم عوض می‌شه، صدای المان Audio رو هم تغییر می‌دیم
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
@@ -40,36 +48,25 @@ export default function MusicPlayer() {
     if (audioRef.current) {
       const current = audioRef.current.currentTime;
       const duration = audioRef.current.duration;
-      if (duration) {
-        setProgress((current / duration) * 100);
-      }
+      if (duration) setProgress((current / duration) * 100);
     }
   };
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (audioRef.current && audioRef.current.duration) {
       const rect = e.currentTarget.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const percentage = clickX / rect.width;
+      const percentage = (e.clientX - rect.left) / rect.width;
       audioRef.current.currentTime = percentage * audioRef.current.duration;
       setProgress(percentage * 100);
-    }
-  };
-
-  // هندلر تغییر صدا با اسلایدر
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (newVolume > 0 && isMuted) {
-      setIsMuted(false);
     }
   };
 
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-24 bg-white border-t border-gray-200 px-6 flex items-center justify-between z-50 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-      <div className="flex items-center gap-4 w-1/4 min-w-[200px]">
+    <div className="fixed bottom-0 left-0 right-0 h-24 bg-white border-t border-gray-200 px-6 flex items-center justify-between z-50 shadow-lg">
+      {/* بخش اول: کاور، نام و آمار (فقط برای Gold) */}
+      <div className="flex items-center gap-4 w-1/4 min-w-[250px]">
         <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
           <Image
             src={currentSong.coverImage || "/default-cover.png"}
@@ -86,18 +83,59 @@ export default function MusicPlayer() {
           >
             {currentSong.title}
           </Link>
-          <span className="text-xs text-gray-500 truncate">
-            {currentSong.artistId}
+          <span className="text-xs text-gray-500 truncate mb-0.5">
+            <Link
+              href={`/artist/${currentSong.artistId}`}
+              className="hover:underline"
+            >
+              {currentSong.artistId}
+            </Link>
           </span>
+          {/* نمایش اطلاعات استریم منحصراً برای کاربران Gold */}
+          {user?.subscription === "GOLD" && (
+            <span className="text-[10px] font-medium text-amber-600 truncate bg-amber-50 inline-block px-1.5 py-0.5 rounded-md mt-1 w-max">
+              {(currentSong.streamsCount / 1000000).toFixed(1)}M Streams
+            </span>
+          )}
         </div>
       </div>
 
+      {/* بخش دوم: کنترل‌ها (با شافل و تکرار) و نوار پیشرفت */}
       <div className="flex flex-col items-center justify-center gap-2 w-2/4 max-w-[600px]">
         <div className="flex items-center gap-6">
-          {/* دکمه آهنگ قبلی متصل شد */}
+          {/* دکمه Shuffle */}
+          <button
+            onClick={toggleShuffle}
+            className={`transition-colors ${isShuffle ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M16 8L20 12L16 16"
+              ></path>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M8 16L4 12L8 8"
+              ></path>
+            </svg>
+          </button>
+
           <button
             onClick={playPrevious}
-            className="text-gray-400 hover:text-green-600 transition-colors"
+            className="text-gray-600 hover:text-green-600 transition-colors"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -123,14 +161,39 @@ export default function MusicPlayer() {
             )}
           </button>
 
-          {/* دکمه آهنگ بعدی متصل شد */}
           <button
             onClick={playNext}
-            className="text-gray-400 hover:text-green-600 transition-colors"
+            className="text-gray-600 hover:text-green-600 transition-colors"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
             </svg>
+          </button>
+
+          {/* دکمه Repeat */}
+          <button
+            onClick={cycleRepeat}
+            className={`transition-colors flex items-center justify-center relative ${repeatMode !== "OFF" ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              ></path>
+            </svg>
+            {/* اگر تکرار روی یک آهنگ بود، عدد 1 رو کوچیک نشون بده */}
+            {repeatMode === "ONE" && (
+              <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-green-100 rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                1
+              </span>
+            )}
           </button>
         </div>
 
@@ -147,45 +210,83 @@ export default function MusicPlayer() {
         </div>
       </div>
 
-      {/* بخش کنترل صدا */}
-      <div className="flex items-center justify-end gap-3 w-1/4 min-w-[200px]">
-        {/* دکمه قطع/وصل صدا */}
+      {/* بخش سوم: آیکون صف، متن آهنگ و ولوم */}
+      <div className="flex items-center justify-end gap-4 w-1/4 min-w-[200px]">
+        {/* دکمه متن آهنگ (Lyrics) */}
+        <button
+          className="text-gray-400 hover:text-green-600 transition-colors"
+          title="Lyrics"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            ></path>
+          </svg>
+        </button>
+        {/* دکمه صف پخش (Queue) */}
+        <button
+          className="text-gray-400 hover:text-green-600 transition-colors"
+          title="Queue"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 6h16M4 12h16M4 18h7"
+            ></path>
+          </svg>
+        </button>
+        <div className="w-px h-6 bg-gray-200 mx-1"></div> {/* خط جداکننده */}
+        {/* دکمه و اسلایدر صدا */}
         <button
           onClick={() => setIsMuted(!isMuted)}
           className="text-gray-400 hover:text-green-600 transition-colors"
         >
           {isMuted || volume === 0 ? (
-            // آیکون Mute
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
             </svg>
           ) : (
-            // آیکون Volume Up
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
             </svg>
           )}
         </button>
-
-        {/* اسلایدر تنظیم صدا */}
         <input
           type="range"
           min="0"
           max="1"
           step="0.01"
           value={isMuted ? 0 : volume}
-          onChange={handleVolumeChange}
-          // استایل دادن به اسلایدر پیش‌فرض مرورگر
-          className="w-24 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-green-600 focus:outline-none"
+          onChange={(e) => {
+            setVolume(parseFloat(e.target.value));
+            if (parseFloat(e.target.value) > 0 && isMuted) setIsMuted(false);
+          }}
+          className="w-20 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-green-600 focus:outline-none"
         />
       </div>
 
-      {/* زمانی که آهنگ تموم شد، به صورت خودکار برو آهنگ بعدی */}
+      {/* هندل کردن Loop به صورت بومی از طریق تگ Audio */}
       <audio
         ref={audioRef}
         src={currentSong.audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onEnded={playNext}
+        loop={repeatMode === "ONE"}
       />
     </div>
   );

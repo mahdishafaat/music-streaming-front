@@ -4,16 +4,21 @@
 import React, { createContext, useContext, useState } from "react";
 import { Song } from "@/types";
 
+type RepeatMode = "OFF" | "ALL" | "ONE";
+
 interface PlayerContextType {
   currentSong: Song | null;
   isPlaying: boolean;
   queue: Song[];
+  isShuffle: boolean;
+  repeatMode: RepeatMode;
   playSong: (song: Song, newQueue?: Song[]) => void;
   togglePlay: () => void;
   setQueue: (songs: Song[]) => void;
-  // دو تا متد جدید برای آهنگ قبلی و بعدی
   playNext: () => void;
   playPrevious: () => void;
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -22,6 +27,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
+
+  // استیت‌های جدید برای شافل و تکرار
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("OFF");
 
   const playSong = (song: Song, newQueue?: Song[]) => {
     setCurrentSong(song);
@@ -32,54 +41,70 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const togglePlay = () => {
-    if (currentSong) {
-      setIsPlaying(!isPlaying);
-    }
+    if (currentSong) setIsPlaying(!isPlaying);
   };
 
-  // تابع رفتن به آهنگ بعدی
+  const toggleShuffle = () => setIsShuffle(!isShuffle);
+
+  const cycleRepeat = () => {
+    setRepeatMode((prev) => {
+      if (prev === "OFF") return "ALL";
+      if (prev === "ALL") return "ONE";
+      return "OFF";
+    });
+  };
+
+  // هوشمندسازی تابع رفتن به آهنگ بعدی
   const playNext = () => {
     if (!currentSong || queue.length === 0) return;
 
-    // پیدا کردن ایندکس آهنگ فعلی تو صف
+    // اگر شافل روشن بود، یک آهنگ تصادفی از صف انتخاب کن
+    if (isShuffle) {
+      const randomIndex = Math.floor(Math.random() * queue.length);
+      playSong(queue[randomIndex]);
+      return;
+    }
+
     const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
 
-    // اگر آهنگی تو صف بود و آهنگ آخر نبودیم
     if (currentIndex !== -1 && currentIndex < queue.length - 1) {
+      // رفتن به آهنگ بعدی در حالت عادی
       playSong(queue[currentIndex + 1]);
-    } else if (queue.length > 0) {
-      // اگر به آخر صف رسیدیم، برگردیم به اول (Loop)
+    } else if (repeatMode === "ALL") {
+      // اگر به آخر صف رسیدیم و تکرار کل روشن بود، برو اول صف
       playSong(queue[0]);
+    } else {
+      // اگر آخر صف بودیم و تکرار خاموش بود، متوقف شو
+      setIsPlaying(false);
     }
   };
 
-  // تابع رفتن به آهنگ قبلی
   const playPrevious = () => {
     if (!currentSong || queue.length === 0) return;
-
     const currentIndex = queue.findIndex((song) => song.id === currentSong.id);
 
-    // اگر آهنگ اول نبودیم، برو به قبلی
     if (currentIndex > 0) {
       playSong(queue[currentIndex - 1]);
-    } else if (queue.length > 0) {
-      // اگر اول صف بودیم، برو به آهنگ آخر
+    } else if (repeatMode === "ALL") {
       playSong(queue[queue.length - 1]);
     }
   };
 
   return (
-    // پاس دادن متدهای جدید به Provider
     <PlayerContext.Provider
       value={{
         currentSong,
         isPlaying,
         queue,
+        isShuffle,
+        repeatMode,
         playSong,
         togglePlay,
         setQueue,
         playNext,
         playPrevious,
+        toggleShuffle,
+        cycleRepeat,
       }}
     >
       {children}
@@ -89,8 +114,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const usePlayer = () => {
   const context = useContext(PlayerContext);
-  if (context === undefined) {
+  if (context === undefined)
     throw new Error("usePlayer must be used within a PlayerProvider");
-  }
   return context;
 };
