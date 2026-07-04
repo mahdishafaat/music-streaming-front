@@ -1,6 +1,7 @@
 // src/app/(main)/layout.tsx
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import MusicPlayer from "@/components/player/MusicPlayer";
 
 export default function MainLayout({
   children,
@@ -21,10 +22,11 @@ export default function MainLayout({
         </div>
 
         {/* ناحیه محتوای اصلی */}
-        <main className="flex-1 bg-white border border-gray-100 rounded-2xl p-6 overflow-y-auto shadow-sm relative">
+        <main className="flex-1 bg-white border border-gray-100 rounded-2xl p-6 overflow-y-auto shadow-sm pb-28">
           {children}
         </main>
       </div>
+      <MusicPlayer />
     </div>
   );
 }
