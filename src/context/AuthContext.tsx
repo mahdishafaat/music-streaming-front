@@ -8,6 +8,7 @@ import {
   setStorageItem,
   removeStorageItem,
 } from "@/utils/storage";
+import { initializeMockDatabase } from "@/utils/mockData";
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // با استفاده از یک تابع ناهمگام (async)، آپدیت استیت رو به چرخه بعدی موکول می‌کنیم
     // تا از رندرهای آبشاری و گیر دادن لینتر جلوگیری بشه
     const initializeAuth = async () => {
+      initializeMockDatabase();
       const storedUser = getStorageItem<User>("currentUser");
       if (storedUser) {
         setUser(storedUser);
