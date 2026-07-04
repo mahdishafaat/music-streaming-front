@@ -11,6 +11,7 @@ export default function MusicPlayer() {
   const {
     currentSong,
     isPlaying,
+    queue,
     togglePlay,
     playNext,
     playPrevious,
@@ -18,13 +19,17 @@ export default function MusicPlayer() {
     toggleShuffle,
     repeatMode,
     cycleRepeat,
+    playSong,
   } = usePlayer();
-  const { user } = useAuth(); // گرفتن اطلاعات کاربر برای چک کردن اشتراک طلایی
+  const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+
+  // استیت جدید برای کنترل باز و بسته بودن پاپ‌آپ صف پخش
+  const [showQueue, setShowQueue] = useState(false);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -65,7 +70,78 @@ export default function MusicPlayer() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-24 bg-white border-t border-gray-200 px-6 flex items-center justify-between z-50 shadow-lg">
-      {/* بخش اول: کاور، نام و آمار (فقط برای Gold) */}
+      {/* پنل شناور صف پخش */}
+      {showQueue && (
+        <div className="absolute bottom-[100px] right-6 w-80 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-100 overflow-hidden flex flex-col max-h-[400px] z-50">
+          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <h3 className="font-bold text-gray-900">Play Queue</h3>
+            <span className="text-xs font-medium text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+              {queue.length} tracks
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+            {queue.length === 0 ? (
+              <div className="p-4 text-center text-sm text-gray-500">
+                Queue is empty
+              </div>
+            ) : (
+              queue.map((song, index) => {
+                const isPlayingThis = currentSong.id === song.id;
+                return (
+                  <div
+                    key={`${song.id}-${index}`}
+                    onClick={() => playSong(song)} // با کلیک روی آهنگ، مستقیماً پخش می‌شود
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${isPlayingThis ? "bg-green-50" : "hover:bg-gray-50"}`}
+                  >
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                      <Image
+                        src={song.coverImage || "/default-cover.png"}
+                        alt={song.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      {isPlayingThis && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          {isPlaying ? (
+                            <svg
+                              className="w-4 h-4 text-green-400"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-4 h-4 text-green-400 ml-0.5"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span
+                        className={`text-sm font-semibold truncate ${isPlayingThis ? "text-green-700" : "text-gray-900"}`}
+                      >
+                        {song.title}
+                      </span>
+                      <span className="text-xs text-gray-500 truncate">
+                        {song.artistId}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* بخش اول: کاور، نام و آمار */}
       <div className="flex items-center gap-4 w-1/4 min-w-[250px]">
         <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
           <Image
@@ -91,7 +167,6 @@ export default function MusicPlayer() {
               {currentSong.artistId}
             </Link>
           </span>
-          {/* نمایش اطلاعات استریم منحصراً برای کاربران Gold */}
           {user?.subscription === "GOLD" && (
             <span className="text-[10px] font-medium text-amber-600 truncate bg-amber-50 inline-block px-1.5 py-0.5 rounded-md mt-1 w-max">
               {(currentSong.streamsCount / 1000000).toFixed(1)}M Streams
@@ -100,10 +175,9 @@ export default function MusicPlayer() {
         </div>
       </div>
 
-      {/* بخش دوم: کنترل‌ها (با شافل و تکرار) و نوار پیشرفت */}
+      {/* بخش دوم: کنترل‌ها و نوار پیشرفت */}
       <div className="flex flex-col items-center justify-center gap-2 w-2/4 max-w-[600px]">
         <div className="flex items-center gap-6">
-          {/* دکمه Shuffle */}
           <button
             onClick={toggleShuffle}
             className={`transition-colors ${isShuffle ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
@@ -132,7 +206,6 @@ export default function MusicPlayer() {
               ></path>
             </svg>
           </button>
-
           <button
             onClick={playPrevious}
             className="text-gray-600 hover:text-green-600 transition-colors"
@@ -141,7 +214,6 @@ export default function MusicPlayer() {
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
             </svg>
           </button>
-
           <button
             onClick={togglePlay}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-all shadow-sm"
@@ -160,7 +232,6 @@ export default function MusicPlayer() {
               </svg>
             )}
           </button>
-
           <button
             onClick={playNext}
             className="text-gray-600 hover:text-green-600 transition-colors"
@@ -169,8 +240,6 @@ export default function MusicPlayer() {
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
             </svg>
           </button>
-
-          {/* دکمه Repeat */}
           <button
             onClick={cycleRepeat}
             className={`transition-colors flex items-center justify-center relative ${repeatMode !== "OFF" ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
@@ -188,7 +257,6 @@ export default function MusicPlayer() {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               ></path>
             </svg>
-            {/* اگر تکرار روی یک آهنگ بود، عدد 1 رو کوچیک نشون بده */}
             {repeatMode === "ONE" && (
               <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-green-100 rounded-full w-3.5 h-3.5 flex items-center justify-center">
                 1
@@ -196,7 +264,6 @@ export default function MusicPlayer() {
             )}
           </button>
         </div>
-
         <div className="w-full flex items-center gap-2">
           <div
             className="h-2 w-full bg-gray-200 rounded-full overflow-hidden cursor-pointer relative"
@@ -212,7 +279,7 @@ export default function MusicPlayer() {
 
       {/* بخش سوم: آیکون صف، متن آهنگ و ولوم */}
       <div className="flex items-center justify-end gap-4 w-1/4 min-w-[200px]">
-        {/* دکمه متن آهنگ (Lyrics) */}
+        {/* دکمه متن آهنگ (Lyrics) - برای مرحله بعد */}
         <button
           className="text-gray-400 hover:text-green-600 transition-colors"
           title="Lyrics"
@@ -231,9 +298,11 @@ export default function MusicPlayer() {
             ></path>
           </svg>
         </button>
-        {/* دکمه صف پخش (Queue) */}
+
+        {/* دکمه صف پخش (Queue) متصل به استیت showQueue */}
         <button
-          className="text-gray-400 hover:text-green-600 transition-colors"
+          onClick={() => setShowQueue(!showQueue)}
+          className={`transition-colors ${showQueue ? "text-green-600" : "text-gray-400 hover:text-green-600"}`}
           title="Queue"
         >
           <svg
@@ -250,8 +319,9 @@ export default function MusicPlayer() {
             ></path>
           </svg>
         </button>
-        <div className="w-px h-6 bg-gray-200 mx-1"></div> {/* خط جداکننده */}
-        {/* دکمه و اسلایدر صدا */}
+
+        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
         <button
           onClick={() => setIsMuted(!isMuted)}
           className="text-gray-400 hover:text-green-600 transition-colors"
@@ -280,7 +350,6 @@ export default function MusicPlayer() {
         />
       </div>
 
-      {/* هندل کردن Loop به صورت بومی از طریق تگ Audio */}
       <audio
         ref={audioRef}
         src={currentSong.audioUrl}
