@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* این خط به تیلویند می‌گه دارک‌تم رو با کلاس دارک کنترل کن */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* بقیه کدهایی که از قبل اینجا بود... */
 :root {
   --background: #ffffff;
   --foreground: #171717;

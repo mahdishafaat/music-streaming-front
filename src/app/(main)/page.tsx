@@ -37,15 +37,16 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col gap-10 pb-8">
+    <div className="flex flex-col gap-10 pb-8 transition-colors">
       {/* پیام خوش‌آمدگویی */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors">
           Good morning, {user?.displayName?.split(" ")[0] || "Guest"}
         </h1>
       </div>
 
       {/* بخش اختصاصی اشتراک طلایی (دسترسی زودهنگام) */}
+      {/* نکته: چون این بخش بک‌گراند رنگی ثابت (گرادیانت سبز) داره، نیازی به دارک‌تم نداره و تو هر دو حالت عالی دیده می‌شه */}
       {user?.subscription === "GOLD" && (
         <section className="bg-gradient-to-r from-green-600 to-green-400 rounded-2xl p-6 text-white shadow-md">
           <div className="flex items-center justify-between mb-4">
@@ -72,8 +73,10 @@ export default function HomePage() {
       {/* آخرین آلبوم‌ها */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Latest Albums</h2>
-          <button className="text-sm font-medium text-gray-500 hover:text-green-600 transition-colors">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">
+            Latest Albums
+          </h2>
+          <button className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
             Show all
           </button>
         </div>
@@ -90,11 +93,10 @@ export default function HomePage() {
 
       {/* آهنگ‌های پرشنونده */}
       <section>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
           Most Listened Songs
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* مرتب‌سازی آهنگ‌ها بر اساس تعداد شنونده به صورت نزولی */}
           {songs
             .sort((a, b) => b.listenersCount - a.listenersCount)
             .map((song) => (
@@ -102,6 +104,8 @@ export default function HomePage() {
                 key={song.id}
                 song={song}
                 artistName={getArtistName(song.artistId)}
+                // اضافه کردن این خط برای ارسال کل آهنگ‌های صفحه به عنوان صف پخش
+                contextSongs={songs}
               />
             ))}
         </div>

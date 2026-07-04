@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { PlayerProvider } from "@/context/PlayerContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +23,9 @@ export default function RootLayout({
       <body
         className={`${inter.className} bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 antialiased selection:bg-green-200 selection:text-gray-900`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <PlayerProvider>{children}</PlayerProvider>
+        </AuthProvider>
       </body>
     </html>
   );
