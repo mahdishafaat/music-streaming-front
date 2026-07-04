@@ -144,8 +144,22 @@ To give up who we are
 So let's raise the bar
 And our cups to the stars`,
   },
+  // === این تک‌آهنگ جدید رو اینجا اضافه کردیم ===
+  {
+    id: "song_6",
+    title: "Shape of You (Single)",
+    artistId: "artist_1",
+    albumId: "", // دقت کن: چون این خالیه، تک‌آهنگ محسوب می‌شه
+    coverImage: "https://picsum.photos/seed/single1/300/300",
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    streamsCount: 6500000,
+    listenersCount: 4000000,
+    lyrics: `The club isn't the best place to find a lover
+So the bar is where I go
+Me and my friends at the table doing shots
+Drinking fast and then we talk slow`,
+  },
 ];
-
 export const initializeMockDatabase = () => {
   // نکته مهم: برای اینکه دیتای جدید و لیریکس‌ها حتماً اعمال بشن،
   // اینجا دیتای مربوط به آهنگ‌ها و آلبوم‌ها رو با مقادیر جدید بازنویسی (Override) می‌کنیم.
