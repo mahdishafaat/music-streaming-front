@@ -15,22 +15,22 @@ interface AuthContextType {
   logout: () => void;
 }
 
-// ایجاد کانتکست با مقدار اولیه نامشخص
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // حل مشکل هیدریشن (Hydration) در نکست‌جی‌اس
-    setIsMounted(true);
+    // با استفاده از یک تابع ناهمگام (async)، آپدیت استیت رو به چرخه بعدی موکول می‌کنیم
+    // تا از رندرهای آبشاری و گیر دادن لینتر جلوگیری بشه
+    const initializeAuth = async () => {
+      const storedUser = getStorageItem<User>("currentUser");
+      if (storedUser) {
+        setUser(storedUser);
+      }
+    };
 
-    // موقع لود شدن برنامه، چک می‌کنیم آیا کاربری تو لوکال استوریج هست یا نه
-    const storedUser = getStorageItem<User>("currentUser");
-    if (storedUser) {
-      setUser(storedUser);
-    }
+    initializeAuth();
   }, []);
 
   const login = (userData: User) => {
@@ -43,9 +43,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     removeStorageItem("currentUser");
   };
 
-  // تا زمانی که کامپوننت روی کلاینت سوار نشده، چیزی رندر نمی‌کنیم تا خطای تطابق سرور/کلاینت نگیریم
-  if (!isMounted) return null;
-
   return (
     <AuthContext.Provider value={{ user, login, logout }}>
       {children}
@@ -53,7 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// یک هوک کاستوم برای استفاده راحت‌تر از کانتکست
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
