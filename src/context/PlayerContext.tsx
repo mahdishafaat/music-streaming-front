@@ -1,7 +1,7 @@
 // src/context/PlayerContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Song } from "@/types";
 
 type RepeatMode = "OFF" | "ALL" | "ONE";
@@ -12,6 +12,7 @@ interface PlayerContextType {
   queue: Song[];
   isShuffle: boolean;
   repeatMode: RepeatMode;
+  volume: number; // اضافه شدن وضعیت ولوم سراسری
   playSong: (song: Song, newQueue?: Song[]) => void;
   togglePlay: () => void;
   setQueue: (songs: Song[]) => void;
@@ -19,6 +20,7 @@ interface PlayerContextType {
   playPrevious: () => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  setVolume: (value: number) => void; // متد تغییر صدا
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -28,9 +30,30 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
 
-  // استیت‌های جدید برای شافل و تکرار
+  // استیت‌های مربوط به شافل و تکرار
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("OFF");
+
+  // استیت مربوط به ولوم (پیش‌فرض 80%)
+  const [volume, setVolumeState] = useState(0.8);
+
+  // خواندن ولوم ذخیره شده هنگام لود اولیه برنامه
+  useEffect(() => {
+    const loadSavedVolume = async () => {
+      const savedVolume = localStorage.getItem("system_volume");
+      if (savedVolume !== null) {
+        setVolumeState(parseFloat(savedVolume));
+      }
+    };
+
+    loadSavedVolume();
+  }, []);
+
+  // تابع تغییر ولوم که هم استیت را آپدیت می‌کند هم در استوریج ذخیره می‌کند
+  const setVolume = (value: number) => {
+    setVolumeState(value);
+    localStorage.setItem("system_volume", value.toString());
+  };
 
   const playSong = (song: Song, newQueue?: Song[]) => {
     setCurrentSong(song);
@@ -98,6 +121,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         queue,
         isShuffle,
         repeatMode,
+        volume,
         playSong,
         togglePlay,
         setQueue,
@@ -105,6 +129,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         playPrevious,
         toggleShuffle,
         cycleRepeat,
+        setVolume,
       }}
     >
       {children}

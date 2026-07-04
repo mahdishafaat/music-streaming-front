@@ -21,12 +21,14 @@ export default function MusicPlayer() {
     repeatMode,
     cycleRepeat,
     playSong,
+    volume,
+    setVolume,
   } = usePlayer();
   const { user } = useAuth();
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [progress, setProgress] = useState(0);
-  const [volume, setVolume] = useState(1);
+
   const [isMuted, setIsMuted] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
