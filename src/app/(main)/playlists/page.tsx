@@ -5,13 +5,14 @@ import { useState, useEffect } from "react";
 import { getStorageItem } from "@/utils/storage";
 import { Playlist } from "@/types";
 import PlaylistCard from "@/components/ui/PlaylistCard";
+import CreatePlaylistModal from "@/components/ui/CreatePlaylistModal";
 
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false); // استیت کنترل مُدال
 
   useEffect(() => {
-    // پیچیدن منطق داخل یک تابع برای جلوگیری از اخطار رندر آبشاری
     const fetchPlaylists = async () => {
       const storedPlaylists = getStorageItem<Playlist[]>("playlists") || [];
       setPlaylists(storedPlaylists);
@@ -20,6 +21,12 @@ export default function PlaylistsPage() {
 
     fetchPlaylists();
   }, []);
+
+  // این تابع وقتی مُدال موفق به ساخت پلی‌لیست می‌شه فراخوانی می‌شه
+  const handlePlaylistCreated = (newPlaylist: Playlist) => {
+    setPlaylists((prev) => [...prev, newPlaylist]);
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="flex flex-col gap-8 pb-10 transition-colors">
@@ -36,7 +43,7 @@ export default function PlaylistsPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           <div
-            onClick={() => alert("Modal Create Playlist will open here!")}
+            onClick={() => setIsModalOpen(true)} // باز کردن مُدال
             className="group flex flex-col gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer justify-center items-center text-center aspect-square"
           >
             <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
@@ -67,6 +74,13 @@ export default function PlaylistsPage() {
           ))}
         </div>
       )}
+
+      {/* اضافه کردن کامپوننت مُدال در انتهای صفحه */}
+      <CreatePlaylistModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handlePlaylistCreated}
+      />
     </div>
   );
 }
