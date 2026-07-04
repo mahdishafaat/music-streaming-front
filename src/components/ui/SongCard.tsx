@@ -11,18 +11,13 @@ interface SongCardProps {
 }
 
 export default function SongCard({ song, artistName }: SongCardProps) {
-  // هوک پلیر رو برای دسترسی به وضعیت و توابع پخش فراخوانی می‌کنیم
   const { playSong, currentSong, isPlaying, togglePlay } = usePlayer();
-
-  // بررسی می‌کنیم آیا این کارت، همون آهنگیه که الان در حال پخشه؟
   const isCurrentSong = currentSong?.id === song.id;
 
   const handlePlayClick = () => {
     if (isCurrentSong) {
-      // اگر همون آهنگ بود، فقط پخشش رو متوقف یا وصل کن
       togglePlay();
     } else {
-      // اگر آهنگ جدیدی بود، بفرستش برای پخش تو کانتکست
       playSong(song);
     }
   };
@@ -36,7 +31,8 @@ export default function SongCard({ song, artistName }: SongCardProps) {
           : "bg-white border-gray-100 hover:bg-green-50"
       }`}
     >
-      <div className="flex items-center gap-4">
+      {/* اضافه کردن flex-1 و min-w-0 به کانتینر اصلی سمت چپ */}
+      <div className="flex items-center gap-4 flex-1 min-w-0">
         <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
           <Image
             src={song.coverImage || "/default-cover.png"}
@@ -45,7 +41,6 @@ export default function SongCard({ song, artistName }: SongCardProps) {
             className="object-cover"
             unoptimized
           />
-          {/* افکت هاور و نمایش آیکون پخش/توقف */}
           <div
             className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${
               isCurrentSong
@@ -72,7 +67,8 @@ export default function SongCard({ song, artistName }: SongCardProps) {
             )}
           </div>
         </div>
-        <div className="flex flex-col">
+        {/* اضافه کردن flex-1 و min-w-0 به کانتینر متن‌ها */}
+        <div className="flex flex-col flex-1 min-w-0">
           <h3
             className={`font-bold truncate ${isCurrentSong ? "text-green-600" : "text-gray-900"}`}
           >
@@ -82,9 +78,9 @@ export default function SongCard({ song, artistName }: SongCardProps) {
         </div>
       </div>
 
-      {/* متن وضعیت در سمت راست کارت */}
+      {/* اضافه کردن flex-shrink-0 برای جلوگیری از فشرده شدن */}
       <div
-        className={`text-sm font-medium px-4 transition-opacity ${
+        className={`text-sm font-medium pl-4 flex-shrink-0 transition-opacity ${
           isCurrentSong
             ? "text-green-600 opacity-100"
             : "text-green-600 opacity-0 group-hover:opacity-100"
