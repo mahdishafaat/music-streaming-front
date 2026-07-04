@@ -30,6 +30,7 @@ export default function MusicPlayer() {
 
   // استیت جدید برای کنترل باز و بسته بودن پاپ‌آپ صف پخش
   const [showQueue, setShowQueue] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -281,9 +282,11 @@ export default function MusicPlayer() {
       <div className="flex items-center justify-end gap-4 w-1/4 min-w-[200px]">
         {/* دکمه متن آهنگ (Lyrics) - برای مرحله بعد */}
         <button
-          className="text-gray-400 hover:text-green-600 transition-colors"
+          onClick={() => setShowLyrics(!showLyrics)}
+          className={`transition-colors ${showLyrics ? "text-green-600" : "text-gray-400 hover:text-green-600"}`}
           title="Lyrics"
         >
+          {/* آیکون متن آهنگ */}
           <svg
             className="w-5 h-5"
             fill="none"
@@ -357,6 +360,31 @@ export default function MusicPlayer() {
         onEnded={playNext}
         loop={repeatMode === "ONE"}
       />
+      {/* مُدال متن آهنگ */}
+      {showLyrics && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl flex flex-col max-h-[80vh] border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Lyrics</h2>
+              <button
+                onClick={() => setShowLyrics(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto text-lg text-gray-700 leading-relaxed text-center whitespace-pre-line font-medium">
+              {currentSong.lyrics || "No lyrics available for this track."}
+            </div>
+            <button
+              onClick={() => setShowLyrics(false)}
+              className="mt-8 w-full bg-green-600 text-white font-bold py-3 rounded-2xl hover:bg-green-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
