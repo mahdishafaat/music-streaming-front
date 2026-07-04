@@ -17,11 +17,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fa" dir="rtl">
+    // زبان رو به انگلیسی تغییر دادیم و dir="rtl" رو حذف کردیم (پیش‌فرض ltr است)
+    <html lang="en">
       <body
-        className={`${inter.className} bg-gray-50 text-gray-900 antialiased`}
+        className={`${inter.className} bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 antialiased selection:bg-green-200 selection:text-gray-900`}
       >
-        {/* AuthProvider کل برنامه رو در بر می‌گیره */}
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
