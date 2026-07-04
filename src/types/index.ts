@@ -47,4 +47,5 @@ export interface Playlist {
   userId: string; // سازنده پلی‌لیست
   songIds: string[];
   coverImage?: string;
+  createdAt: string;
 }
