@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/context/AuthContext";
+import AddToPlaylistModal from "@/components/ui/AddToPlaylistModal";
 
 export default function MusicPlayer() {
   const {
@@ -30,6 +31,7 @@ export default function MusicPlayer() {
   const [showQueue, setShowQueue] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -84,6 +86,7 @@ export default function MusicPlayer() {
               unoptimized
             />
           </div>
+
           <div className="flex flex-col min-w-0">
             <Link
               href={
@@ -107,6 +110,25 @@ export default function MusicPlayer() {
               </span>
             )}
           </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="ml-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            title="Add to Playlist"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4v16m8-8H4"
+              ></path>
+            </svg>
+          </button>
         </div>
 
         <div className="flex flex-col items-center justify-center gap-2 w-2/4 max-w-[600px]">
@@ -644,7 +666,11 @@ export default function MusicPlayer() {
           </div>
         </div>
       )}
-
+      <AddToPlaylistModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        song={currentSong}
+      />
       <audio
         ref={audioRef}
         src={currentSong.audioUrl}
