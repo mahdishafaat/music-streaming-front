@@ -8,9 +8,14 @@ import { usePlayer } from "@/context/PlayerContext";
 interface SongCardProps {
   song: Song;
   artistName: string;
+  contextSongs?: Song[];
 }
 
-export default function SongCard({ song, artistName }: SongCardProps) {
+export default function SongCard({
+  song,
+  artistName,
+  contextSongs,
+}: SongCardProps) {
   const { playSong, currentSong, isPlaying, togglePlay } = usePlayer();
   const isCurrentSong = currentSong?.id === song.id;
 
@@ -18,7 +23,7 @@ export default function SongCard({ song, artistName }: SongCardProps) {
     if (isCurrentSong) {
       togglePlay();
     } else {
-      playSong(song);
+      playSong(song, contextSongs || [song]);
     }
   };
 
@@ -27,13 +32,12 @@ export default function SongCard({ song, artistName }: SongCardProps) {
       onClick={handlePlayClick}
       className={`group flex items-center justify-between p-3 border rounded-2xl transition-colors shadow-sm cursor-pointer ${
         isCurrentSong
-          ? "bg-green-50 border-green-200"
-          : "bg-white border-gray-100 hover:bg-green-50"
+          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50"
+          : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-gray-700"
       }`}
     >
-      {/* اضافه کردن flex-1 و min-w-0 به کانتینر اصلی سمت چپ */}
       <div className="flex items-center gap-4 flex-1 min-w-0">
-        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-700">
           <Image
             src={song.coverImage || "/default-cover.png"}
             alt={song.title}
@@ -67,23 +71,27 @@ export default function SongCard({ song, artistName }: SongCardProps) {
             )}
           </div>
         </div>
-        {/* اضافه کردن flex-1 و min-w-0 به کانتینر متن‌ها */}
         <div className="flex flex-col flex-1 min-w-0">
           <h3
-            className={`font-bold truncate ${isCurrentSong ? "text-green-600" : "text-gray-900"}`}
+            className={`font-bold truncate transition-colors ${
+              isCurrentSong
+                ? "text-green-600 dark:text-green-400"
+                : "text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400"
+            }`}
           >
             {song.title}
           </h3>
-          <span className="text-sm text-gray-500 truncate">{artistName}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+            {artistName}
+          </span>
         </div>
       </div>
 
-      {/* اضافه کردن flex-shrink-0 برای جلوگیری از فشرده شدن */}
       <div
         className={`text-sm font-medium pl-4 flex-shrink-0 transition-opacity ${
           isCurrentSong
-            ? "text-green-600 opacity-100"
-            : "text-green-600 opacity-0 group-hover:opacity-100"
+            ? "text-green-600 dark:text-green-400 opacity-100"
+            : "text-green-600 dark:text-green-400 opacity-0 group-hover:opacity-100"
         }`}
       >
         {isCurrentSong ? (isPlaying ? "Playing" : "Paused") : "Play Now"}

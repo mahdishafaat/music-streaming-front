@@ -1,39 +1,30 @@
 // src/components/layout/Topbar.tsx
 "use client";
 import { useAuth } from "@/context/AuthContext";
-import Image from "next/image"; // این خط اضافه شد
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 export default function Topbar() {
   const { user } = useAuth();
 
   return (
-    <header className="h-full px-6 flex items-center justify-between">
-      <div className="flex-1">
-        {/* نوار جستجو در مراحل بعدی اینجا اضافه می‌شود */}
-      </div>
+    <div className="h-full px-6 flex items-center justify-between transition-colors bg-transparent">
+      {/* بخش جستجو یا فضای خالی */}
+      <div className="flex-1"></div>
 
-      <div className="flex items-center gap-4">
-        <span className="font-medium text-gray-700">
-          {user ? user.displayName : "Guest User"}
-        </span>
+      {/* بخش پروفایل و کنترل‌ها */}
+      <div className="flex items-center gap-6">
+        {/* دکمه دارک‌تم اینجاست */}
+        <ThemeToggle />
 
-        <div className="w-10 h-10 rounded-full bg-green-100 border-2 border-green-200 flex items-center justify-center overflow-hidden relative">
-          {user?.profileImage ? (
-            // استفاده از کامپوننت ایمیج نکست‌جی‌اس
-            <Image
-              src={user.profileImage}
-              alt="Profile"
-              fill // پر کردن کانتینر والد
-              className="object-cover"
-              unoptimized // چون فعلا دیتای ماک داریم و دامنه عکس‌ها مشخص نیست، این گزینه رو فعال می‌کنیم تا به خطای دامین نخوریم
-            />
-          ) : (
-            <span className="text-green-800 font-bold z-10">
-              {user?.displayName?.charAt(0).toUpperCase() || "U"}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors">
+            {user?.displayName || user?.username || "Guest"}
+          </span>
+          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-bold text-lg border border-green-200 dark:border-green-800 transition-colors shadow-sm">
+            {user?.displayName?.[0]?.toUpperCase() || "G"}
+          </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }

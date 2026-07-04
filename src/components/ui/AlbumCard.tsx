@@ -12,20 +12,22 @@ export default function AlbumCard({ album, artistName }: AlbumCardProps) {
   return (
     <Link
       href={`/albums/${album.id}`}
-      className="group flex flex-col gap-3 p-4 bg-white border border-gray-100 rounded-2xl hover:bg-green-50 transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer"
+      className="group flex flex-col gap-3 p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-green-50 dark:hover:bg-gray-700 transition-colors cursor-pointer shadow-sm"
     >
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100">
+      <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-sm bg-gray-100 dark:bg-gray-700">
         <Image
-          src={album.coverImage}
+          src={album.coverImage || "/default-cover.png"}
           alt={album.title}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
           unoptimized
         />
       </div>
-      <div className="flex flex-col">
-        <h3 className="font-bold text-gray-900 truncate">{album.title}</h3>
-        <span className="text-sm text-gray-500 truncate hover:text-green-600 transition-colors">
+      <div className="flex flex-col min-w-0">
+        <h3 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+          {album.title}
+        </h3>
+        <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
           {artistName}
         </span>
       </div>

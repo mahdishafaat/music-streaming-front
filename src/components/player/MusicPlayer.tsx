@@ -27,11 +27,9 @@ export default function MusicPlayer() {
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-
-  // استیت‌های کنترل نمایش پنل‌ها
   const [showQueue, setShowQueue] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false); // مخصوص موبایل
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -73,12 +71,11 @@ export default function MusicPlayer() {
   return (
     <>
       {/* ========================================= */}
-      {/* 1. DESKTOP PLAYER (Hidden on Mobile) */}
+      {/* 1. DESKTOP PLAYER */}
       {/* ========================================= */}
-      <div className="hidden md:flex fixed bottom-0 left-0 right-0 h-24 bg-white border-t border-gray-200 px-6 items-center justify-between z-40 shadow-lg">
-        {/* بخش اول: کاور، نام و آمار */}
+      <div className="hidden md:flex fixed bottom-0 left-0 right-0 h-24 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 items-center justify-between z-40 shadow-lg transition-colors">
         <div className="flex items-center gap-4 w-1/4 min-w-[250px]">
-          <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
+          <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 border border-gray-100 dark:border-gray-700">
             <Image
               src={currentSong.coverImage || "/default-cover.png"}
               alt={currentSong.title}
@@ -92,11 +89,11 @@ export default function MusicPlayer() {
               href={
                 currentSong.albumId ? `/albums/${currentSong.albumId}` : "#"
               }
-              className="font-bold text-gray-900 hover:text-green-600 truncate transition-colors"
+              className="font-bold text-gray-900 dark:text-white hover:text-green-600 dark:hover:text-green-400 truncate transition-colors"
             >
               {currentSong.title}
             </Link>
-            <span className="text-xs text-gray-500 truncate mb-0.5">
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate mb-0.5">
               <Link
                 href={`/artist/${currentSong.artistId}`}
                 className="hover:underline"
@@ -105,19 +102,18 @@ export default function MusicPlayer() {
               </Link>
             </span>
             {user?.subscription === "GOLD" && (
-              <span className="text-[10px] font-medium text-amber-600 truncate bg-amber-50 inline-block px-1.5 py-0.5 rounded-md mt-1 w-max">
+              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 truncate bg-amber-50 dark:bg-amber-900/30 inline-block px-1.5 py-0.5 rounded-md mt-1 w-max">
                 {(currentSong.streamsCount / 1000000).toFixed(1)}M Streams
               </span>
             )}
           </div>
         </div>
 
-        {/* بخش دوم: کنترل‌ها و نوار پیشرفت */}
         <div className="flex flex-col items-center justify-center gap-2 w-2/4 max-w-[600px]">
           <div className="flex items-center gap-6">
             <button
               onClick={toggleShuffle}
-              className={`transition-colors ${isShuffle ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
+              className={`transition-colors ${isShuffle ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
             >
               <svg
                 className="w-4 h-4"
@@ -145,7 +141,7 @@ export default function MusicPlayer() {
             </button>
             <button
               onClick={playPrevious}
-              className="text-gray-600 hover:text-green-600 transition-colors"
+              className="text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
@@ -153,7 +149,7 @@ export default function MusicPlayer() {
             </button>
             <button
               onClick={togglePlay}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 text-green-700 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 hover:bg-green-600 dark:hover:bg-green-600 hover:text-white transition-all shadow-sm"
             >
               {isPlaying ? (
                 <svg
@@ -175,7 +171,7 @@ export default function MusicPlayer() {
             </button>
             <button
               onClick={playNext}
-              className="text-gray-600 hover:text-green-600 transition-colors"
+              className="text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
@@ -183,7 +179,7 @@ export default function MusicPlayer() {
             </button>
             <button
               onClick={cycleRepeat}
-              className={`transition-colors flex items-center justify-center relative ${repeatMode !== "OFF" ? "text-green-600" : "text-gray-400 hover:text-gray-600"}`}
+              className={`transition-colors flex items-center justify-center relative ${repeatMode !== "OFF" ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
             >
               <svg
                 className="w-4 h-4"
@@ -199,7 +195,7 @@ export default function MusicPlayer() {
                 ></path>
               </svg>
               {repeatMode === "ONE" && (
-                <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-green-100 rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-green-100 dark:bg-green-900/50 rounded-full w-3.5 h-3.5 flex items-center justify-center">
                   1
                 </span>
               )}
@@ -207,7 +203,7 @@ export default function MusicPlayer() {
           </div>
           <div className="w-full flex items-center gap-2">
             <div
-              className="h-2 w-full bg-gray-200 rounded-full overflow-hidden cursor-pointer relative"
+              className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer relative"
               onClick={handleSeek}
             >
               <div
@@ -218,11 +214,10 @@ export default function MusicPlayer() {
           </div>
         </div>
 
-        {/* بخش سوم: آیکون صف، متن آهنگ و ولوم */}
         <div className="flex items-center justify-end gap-4 w-1/4 min-w-[200px]">
           <button
             onClick={() => setShowLyrics(true)}
-            className={`transition-colors ${showLyrics ? "text-green-600" : "text-gray-400 hover:text-green-600"}`}
+            className={`transition-colors ${showLyrics ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400"}`}
             title="Lyrics"
           >
             <svg
@@ -241,7 +236,7 @@ export default function MusicPlayer() {
           </button>
           <button
             onClick={() => setShowQueue(!showQueue)}
-            className={`transition-colors ${showQueue ? "text-green-600" : "text-gray-400 hover:text-green-600"}`}
+            className={`transition-colors ${showQueue ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400"}`}
             title="Queue"
           >
             <svg
@@ -258,10 +253,10 @@ export default function MusicPlayer() {
               ></path>
             </svg>
           </button>
-          <div className="w-px h-6 bg-gray-200 mx-1"></div>
+          <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="text-gray-400 hover:text-green-600 transition-colors"
+            className="text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
           >
             {isMuted || volume === 0 ? (
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -283,7 +278,7 @@ export default function MusicPlayer() {
               setVolume(parseFloat(e.target.value));
               if (parseFloat(e.target.value) > 0 && isMuted) setIsMuted(false);
             }}
-            className="w-20 h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer accent-green-600 focus:outline-none"
+            className="w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full appearance-none cursor-pointer accent-green-600 focus:outline-none"
           />
         </div>
       </div>
@@ -294,10 +289,10 @@ export default function MusicPlayer() {
       {!isFullScreen && (
         <div
           onClick={() => setIsFullScreen(true)}
-          className="md:hidden fixed bottom-[72px] left-2 right-2 h-16 bg-white border border-gray-100 rounded-2xl px-4 flex items-center justify-between z-40 shadow-[0_8px_30px_rgb(0,0,0,0.12)] cursor-pointer"
+          className="md:hidden fixed bottom-[72px] left-2 right-2 h-16 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-4 flex items-center justify-between z-40 shadow-[0_8px_30px_rgb(0,0,0,0.12)] cursor-pointer transition-colors"
         >
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
               <Image
                 src={currentSong.coverImage || "/default-cover.png"}
                 alt={currentSong.title}
@@ -307,10 +302,10 @@ export default function MusicPlayer() {
               />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm text-gray-900 truncate">
+              <span className="font-bold text-sm text-gray-900 dark:text-white truncate">
                 {currentSong.title}
               </span>
-              <span className="text-xs text-gray-500 truncate">
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 {currentSong.artistId}
               </span>
             </div>
@@ -321,7 +316,7 @@ export default function MusicPlayer() {
                 e.stopPropagation();
                 togglePlay();
               }}
-              className="w-10 h-10 flex items-center justify-center text-gray-900"
+              className="w-10 h-10 flex items-center justify-center text-gray-900 dark:text-white"
             >
               {isPlaying ? (
                 <svg
@@ -342,8 +337,7 @@ export default function MusicPlayer() {
               )}
             </button>
           </div>
-          {/* نوار پیشرفت نازک در پایین مینی‌پلیر */}
-          <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-green-500"
               style={{ width: `${progress}%` }}
@@ -356,11 +350,11 @@ export default function MusicPlayer() {
       {/* 3. MOBILE FULL SCREEN PLAYER */}
       {/* ========================================= */}
       {isFullScreen && (
-        <div className="md:hidden fixed inset-0 bg-white z-[60] flex flex-col p-6 animate-in slide-in-from-bottom-full duration-300">
+        <div className="md:hidden fixed inset-0 bg-white dark:bg-gray-900 z-[60] flex flex-col p-6 animate-in slide-in-from-bottom-full duration-300 transition-colors">
           <div className="flex justify-between items-center mb-8 pt-4">
             <button
               onClick={() => setIsFullScreen(false)}
-              className="text-gray-400 hover:text-gray-600 p-2"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-2"
             >
               <svg
                 className="w-6 h-6"
@@ -376,12 +370,12 @@ export default function MusicPlayer() {
                 />
               </svg>
             </button>
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
               Now Playing
             </span>
             <button
               onClick={() => setShowQueue(!showQueue)}
-              className={`p-2 ${showQueue ? "text-green-600" : "text-gray-400"}`}
+              className={`p-2 ${showQueue ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}
             >
               <svg
                 className="w-6 h-6"
@@ -399,7 +393,7 @@ export default function MusicPlayer() {
             </button>
           </div>
 
-          <div className="relative w-full aspect-square rounded-3xl overflow-hidden shadow-2xl mb-8 bg-gray-100 mx-auto max-w-sm">
+          <div className="relative w-full aspect-square rounded-3xl overflow-hidden shadow-2xl dark:shadow-none mb-8 bg-gray-100 dark:bg-gray-800 mx-auto max-w-sm">
             <Image
               src={currentSong.coverImage || "/default-cover.png"}
               alt={currentSong.title}
@@ -410,17 +404,17 @@ export default function MusicPlayer() {
           </div>
 
           <div className="flex flex-col min-w-0 mb-6 mx-auto max-w-sm w-full text-center">
-            <h2 className="text-2xl font-bold text-gray-900 truncate mb-1">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white truncate mb-1">
               {currentSong.title}
             </h2>
-            <p className="text-lg text-gray-500 truncate">
+            <p className="text-lg text-gray-500 dark:text-gray-400 truncate">
               {currentSong.artistId}
             </p>
           </div>
 
           <div className="mb-8 mx-auto max-w-sm w-full">
             <div
-              className="h-2 w-full bg-gray-200 rounded-full overflow-hidden cursor-pointer relative"
+              className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer relative"
               onClick={handleSeek}
             >
               <div
@@ -433,7 +427,7 @@ export default function MusicPlayer() {
           <div className="flex items-center justify-between mb-8 mx-auto max-w-sm w-full px-4">
             <button
               onClick={toggleShuffle}
-              className={`p-2 ${isShuffle ? "text-green-600" : "text-gray-400"}`}
+              className={`p-2 ${isShuffle ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}
             >
               <svg
                 className="w-5 h-5"
@@ -459,14 +453,17 @@ export default function MusicPlayer() {
                 ></path>
               </svg>
             </button>
-            <button onClick={playPrevious} className="text-gray-900 p-2">
+            <button
+              onClick={playPrevious}
+              className="text-gray-900 dark:text-white p-2"
+            >
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
               </svg>
             </button>
             <button
               onClick={togglePlay}
-              className="w-20 h-20 flex items-center justify-center rounded-full bg-green-600 text-white shadow-lg shadow-green-200"
+              className="w-20 h-20 flex items-center justify-center rounded-full bg-green-600 text-white shadow-lg shadow-green-200 dark:shadow-none"
             >
               {isPlaying ? (
                 <svg
@@ -486,14 +483,17 @@ export default function MusicPlayer() {
                 </svg>
               )}
             </button>
-            <button onClick={playNext} className="text-gray-900 p-2">
+            <button
+              onClick={playNext}
+              className="text-gray-900 dark:text-white p-2"
+            >
               <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
               </svg>
             </button>
             <button
               onClick={cycleRepeat}
-              className={`p-2 relative ${repeatMode !== "OFF" ? "text-green-600" : "text-gray-400"}`}
+              className={`p-2 relative ${repeatMode !== "OFF" ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}
             >
               <svg
                 className="w-5 h-5"
@@ -509,7 +509,7 @@ export default function MusicPlayer() {
                 ></path>
               </svg>
               {repeatMode === "ONE" && (
-                <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-green-100 rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-green-100 dark:bg-green-900/50 rounded-full w-4 h-4 flex items-center justify-center">
                   1
                 </span>
               )}
@@ -519,7 +519,7 @@ export default function MusicPlayer() {
           <div className="mt-auto flex justify-center pb-6">
             <button
               onClick={() => setShowLyrics(true)}
-              className="flex flex-col items-center gap-2 text-gray-500 hover:text-green-600 transition-colors"
+              className="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
             >
               <svg
                 className="w-6 h-6"
@@ -543,21 +543,22 @@ export default function MusicPlayer() {
       )}
 
       {/* ========================================= */}
-      {/* 4. SHARED MODALS & NATIVE AUDIO */}
+      {/* 4. SHARED MODALS */}
       {/* ========================================= */}
 
-      {/* پاپ‌آپ صف پخش (مشترک بین موبایل و دسکتاپ) */}
       {showQueue && (
-        <div className="fixed bottom-[90px] right-4 md:bottom-[100px] md:right-6 w-[calc(100vw-2rem)] md:w-80 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] border border-gray-100 overflow-hidden flex flex-col max-h-[400px] z-[70]">
-          <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-            <h3 className="font-bold text-gray-900">Play Queue</h3>
-            <span className="text-xs font-medium text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+        <div className="fixed bottom-[90px] right-4 md:bottom-[100px] md:right-6 w-[calc(100vw-2rem)] md:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col max-h-[400px] z-[70] transition-colors">
+          <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
+            <h3 className="font-bold text-gray-900 dark:text-white">
+              Play Queue
+            </h3>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">
               {queue.length} tracks
             </span>
           </div>
           <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
             {queue.length === 0 ? (
-              <div className="p-4 text-center text-sm text-gray-500">
+              <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
                 Queue is empty
               </div>
             ) : (
@@ -567,9 +568,9 @@ export default function MusicPlayer() {
                   <div
                     key={`${song.id}-${index}`}
                     onClick={() => playSong(song)}
-                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${isPlayingThis ? "bg-green-50" : "hover:bg-gray-50"}`}
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${isPlayingThis ? "bg-green-50 dark:bg-green-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}
                   >
-                    <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200">
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                       <Image
                         src={song.coverImage || "/default-cover.png"}
                         alt={song.title}
@@ -601,11 +602,11 @@ export default function MusicPlayer() {
                     </div>
                     <div className="flex flex-col min-w-0 flex-1">
                       <span
-                        className={`text-sm font-semibold truncate ${isPlayingThis ? "text-green-700" : "text-gray-900"}`}
+                        className={`text-sm font-semibold truncate ${isPlayingThis ? "text-green-700 dark:text-green-400" : "text-gray-900 dark:text-gray-200"}`}
                       >
                         {song.title}
                       </span>
-                      <span className="text-xs text-gray-500 truncate">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {song.artistId}
                       </span>
                     </div>
@@ -617,20 +618,21 @@ export default function MusicPlayer() {
         </div>
       )}
 
-      {/* مُدال متن آهنگ (مشترک) */}
       {showLyrics && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[80]">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-8 shadow-2xl flex flex-col max-h-[80vh] border border-gray-100">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg p-8 shadow-2xl flex flex-col max-h-[80vh] border border-gray-100 dark:border-gray-700 transition-colors">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Lyrics</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Lyrics
+              </h2>
               <button
                 onClick={() => setShowLyrics(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
               >
                 ✕
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto text-lg text-gray-700 leading-relaxed text-center whitespace-pre-line font-medium">
+            <div className="flex-1 overflow-y-auto text-lg text-gray-700 dark:text-gray-300 leading-relaxed text-center whitespace-pre-line font-medium">
               {currentSong.lyrics || "No lyrics available for this track."}
             </div>
             <button
@@ -643,7 +645,6 @@ export default function MusicPlayer() {
         </div>
       )}
 
-      {/* المان اصلی پخش صوت مخفی */}
       <audio
         ref={audioRef}
         src={currentSong.audioUrl}
