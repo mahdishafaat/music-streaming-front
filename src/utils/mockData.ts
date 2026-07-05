@@ -1,29 +1,21 @@
 // src/utils/mockData.ts
-import { Song, Album, User, Notification } from "@/types";
+import { Song, Album, Notification, Artist } from "@/types";
 import { getStorageItem, setStorageItem } from "./storage";
 
-export const mockArtists: User[] = [
+export const mockArtists: Artist[] = [
   {
     id: "artist_1",
-    username: "the_weeknd_mock",
-    displayName: "The Weeknd",
-    email: "weeknd@mock.com",
-    role: "ARTIST",
-    subscription: "GOLD",
-    followersCount: 1500000,
-    followingCount: 12,
-    profileImage: "https://i.pravatar.cc/150?u=artist_1",
+    name: "The Weeknd",
+    bio: "Abel Makkonen Tesfaye, known professionally as The Weeknd, is a Canadian singer, songwriter, and record producer. Known for his sonic versatility and dark lyricism, his music explores escapism, romance, and melancholia.",
+    imageUrl: "https://i.pravatar.cc/150?u=artist_1",
+    isVerified: true,
   },
   {
     id: "artist_2",
-    username: "daft_punk_mock",
-    displayName: "Daft Punk",
-    email: "daft@mock.com",
-    role: "ARTIST",
-    subscription: "SILVER",
-    followersCount: 800000,
-    followingCount: 0,
-    profileImage: "https://i.pravatar.cc/150?u=artist_2",
+    name: "Daft Punk",
+    bio: "Daft Punk were a French electronic music duo formed in 1993 in Paris by Guy-Manuel de Homem-Christo and Thomas Bangalter.",
+    imageUrl: "https://i.pravatar.cc/150?u=artist_2",
+    isVerified: false,
   },
 ];
 
@@ -144,12 +136,11 @@ To give up who we are
 So let's raise the bar
 And our cups to the stars`,
   },
-  // === این تک‌آهنگ جدید رو اینجا اضافه کردیم ===
   {
     id: "song_6",
     title: "Shape of You (Single)",
     artistId: "artist_1",
-    albumId: "", // دقت کن: چون این خالیه، تک‌آهنگ محسوب می‌شه
+    albumId: "", 
     coverImage: "https://picsum.photos/seed/single1/300/300",
     audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
     streamsCount: 6500000,
@@ -160,8 +151,8 @@ Me and my friends at the table doing shots
 Drinking fast and then we talk slow`,
   },
 ];
+
 export const mockNotifications: Notification[] = [
-  // 1. User Notification: Subscription Expiry Warning
   {
     id: 'notif_1',
     userId: 'user_1',
@@ -172,7 +163,6 @@ export const mockNotifications: Notification[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     targetRole: 'USER',
   },
-  // 2. User Notification: New Release
   {
     id: 'notif_2',
     userId: 'user_1',
@@ -184,7 +174,6 @@ export const mockNotifications: Notification[] = [
     link: '/albums/album_1',
     targetRole: 'USER',
   },
-  // 3. Artist Notification: Account Verification Result
   {
     id: 'notif_3',
     userId: 'artist_1',
@@ -195,7 +184,6 @@ export const mockNotifications: Notification[] = [
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     targetRole: 'ARTIST',
   },
-  // 4. Admin Notification: New Verification Request
   {
     id: 'notif_4',
     userId: 'admin_1',
@@ -209,22 +197,18 @@ export const mockNotifications: Notification[] = [
 ];
 
 export const initializeMockDatabase = () => {
-  // نکته مهم: برای اینکه دیتای جدید و لیریکس‌ها حتماً اعمال بشن،
-  // اینجا دیتای مربوط به آهنگ‌ها و آلبوم‌ها رو با مقادیر جدید بازنویسی (Override) می‌کنیم.
   setStorageItem("artists", mockArtists);
   setStorageItem("albums", mockAlbums);
   setStorageItem("songs", mockSongs);
 
-  // اضافه کردن اعلانات تستی در صورتی که وجود نداشتند
   const existingNotifs = getStorageItem("notifications");
   if (!existingNotifs) {
     setStorageItem("notifications", mockNotifications);
   }
 
-  // پلی‌لیست‌ها رو فقط اگر وجود نداشتن می‌سازیم تا دیتای کاربر پاک نشه
   const existingPlaylists = getStorageItem("playlists");
   if (!existingPlaylists) {
     setStorageItem("playlists", []);
   }
-  console.log("Mock database forcibly updated.")
+  console.log("Mock database forcibly updated.");
 };

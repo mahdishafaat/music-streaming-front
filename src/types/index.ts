@@ -61,3 +61,12 @@ export interface Notification {
   link?: string; // لینک اختیاری (مثلاً برای هدایت به صفحه اثر جدید)
   targetRole?: 'USER' | 'ARTIST' | 'ADMIN'; // نقشی که این اعلان براش مناسبه
 }
+
+// ساختار داده‌ای هنرمند
+export interface Artist {
+  id: string;
+  name: string;
+  bio: string;
+  imageUrl?: string;
+  isVerified: boolean;
+}
