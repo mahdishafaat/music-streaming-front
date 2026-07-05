@@ -19,9 +19,14 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('');
   const [editUsername, setEditUsername] = useState('');
   const [imageError, setImageError] = useState('');
+  
+  // استیت‌های مربوط به تغییر عکس پروفایل
+  const [tempProfileImage, setTempProfileImage] = useState('');
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
 
   // استیت‌های نمایشی (mock) برای آمار
-  const dailyStreams = 142; // آمار تستی استریم روزانه
+  const dailyStreams = 142;
 
   useEffect(() => {
     const loadPlaylists = async () => {
@@ -31,12 +36,12 @@ export default function ProfilePage() {
     loadPlaylists();
   }, []);
 
-  // فیکس کردن ارور لینتر ری‌اکت با استفاده از تابع ناهمگام
   useEffect(() => {
     const initForm = async () => {
       if (user) {
         setEditName(user.displayName);
         setEditUsername(user.username);
+        setTempProfileImage(user.profileImage || '');
       }
     };
     initForm();
@@ -49,21 +54,28 @@ export default function ProfilePage() {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // انگلیسی کردن پیام موفقیت
     alert(`Profile successfully updated:\nName: ${editName}\nUsername: ${editUsername}`);
     setIsEditing(false);
   };
 
   const handleImageUploadClick = () => {
-    // اعمال محدودیت برای کاربران دارای اشتراک پایه با پیام انگلیسی
     if (user?.subscription === 'BASE') {
       setImageError('Users with a BASE subscription cannot change their profile picture.');
       setTimeout(() => setImageError(''), 5000);
       return;
     }
     
-    // پیام تستی انگلیسی
-    alert('File selection dialog will open... (Available for SILVER and GOLD plans)');
+    // باز کردن مودال برای کاربران مجاز
+    setIsImageModalOpen(true);
+  };
+
+  const handleSaveImage = () => {
+    if (newImageUrl.trim()) {
+      setTempProfileImage(newImageUrl);
+      // در یک سیستم واقعی، اینجا یک درخواست به بک‌اند برای آپدیت دیتابیس ارسال می‌شود
+    }
+    setIsImageModalOpen(false);
+    setNewImageUrl('');
   };
 
   if (!user) {
@@ -75,16 +87,16 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-10 pb-10 transition-colors max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-10 pb-10 transition-colors max-w-6xl mx-auto w-full relative">
       
       {/* هدر پروفایل */}
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 pb-8 border-b border-gray-200 dark:border-gray-800">
         
         {/* بخش عکس پروفایل */}
         <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden shadow-2xl flex-shrink-0 bg-gradient-to-tr from-green-400 to-green-600 border-4 border-white dark:border-gray-900 flex items-center justify-center group">
-          {user.profileImage ? (
+          {tempProfileImage ? (
             <Image 
-              src={user.profileImage} 
+              src={tempProfileImage} 
               alt={user.displayName} 
               fill 
               className="object-cover" 
@@ -108,7 +120,6 @@ export default function ProfilePage() {
           )}
         </div>
         
-        {/* اطلاعات متنی پروفایل */}
         <div className="flex flex-col gap-2 flex-1 text-center md:text-left min-w-0 w-full mt-4 md:mt-0">
           <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
             Profile • @{user.username}
@@ -117,7 +128,6 @@ export default function ProfilePage() {
             {user.displayName}
           </h1>
           
-          {/* آمار و وضعیت اشتراک */}
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-3">
             <span className="font-bold text-yellow-600 dark:text-yellow-500 text-xs bg-yellow-50 dark:bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-200 dark:border-yellow-800/50">
               {user.subscription} PLAN
@@ -136,7 +146,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* دکمه‌های اکشن (ویرایش و خروج) */}
         <div className="mt-4 md:mt-0 flex-shrink-0 flex gap-2 items-center">
           <button
             onClick={() => setIsEditing(!isEditing)}
@@ -155,7 +164,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* فرم ویرایش */}
       {isEditing && (
         <section className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm animate-fade-in">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Edit Profile Details</h2>
@@ -197,7 +205,6 @@ export default function ProfilePage() {
         </section>
       )}
 
-      {/* بخش پلی‌لیست‌های کاربر */}
       <section>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Public Playlists</h2>
         
@@ -217,6 +224,42 @@ export default function ProfilePage() {
           </div>
         )}
       </section>
+
+      {/* مودال تغییر عکس پروفایل */}
+      {isImageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-fade-in p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-6 flex flex-col gap-5">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Update Profile Picture</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Please enter the URL of your new profile image.
+            </p>
+            <input
+              type="url"
+              placeholder="https://example.com/my-photo.jpg"
+              value={newImageUrl}
+              onChange={(e) => setNewImageUrl(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
+            />
+            <div className="flex justify-end gap-3 mt-2">
+              <button
+                onClick={() => {
+                  setIsImageModalOpen(false);
+                  setNewImageUrl('');
+                }}
+                className="px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveImage}
+                className="px-4 py-2 rounded-lg font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
+              >
+                Save Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
