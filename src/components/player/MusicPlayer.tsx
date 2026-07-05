@@ -7,6 +7,8 @@ import Link from "next/link";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/context/AuthContext";
 import AddToPlaylistModal from "@/components/ui/AddToPlaylistModal";
+import { getStorageItem } from "@/utils/storage";
+import { Artist } from "@/types";
 
 export default function MusicPlayer() {
   const {
@@ -28,12 +30,14 @@ export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [progress, setProgress] = useState(0);
-
   const [isMuted, setIsMuted] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // استیت برای ذخیره اسم خواننده در پلیر
+  const [currentArtistName, setCurrentArtistName] = useState("Unknown Artist");
 
   useEffect(() => {
     if (audioRef.current) {
@@ -52,6 +56,19 @@ export default function MusicPlayer() {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
+
+  // پیدا کردن اسم خواننده وقتی آهنگ عوض می‌شه
+  useEffect(() => {
+    if (currentSong) {
+      const allArtists = getStorageItem<Artist[]>("artists") || [];
+      const artist = allArtists.find(a => a.id === currentSong.artistId);
+      if (artist) {
+        setCurrentArtistName(artist.name);
+      } else {
+        setCurrentArtistName(currentSong.artistId); // Fallback
+      }
+    }
+  }, [currentSong]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -74,9 +91,6 @@ export default function MusicPlayer() {
 
   return (
     <>
-      {/* ========================================= */}
-      {/* 1. DESKTOP PLAYER */}
-      {/* ========================================= */}
       <div className="hidden md:flex fixed bottom-0 left-0 right-0 h-24 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 items-center justify-between z-40 shadow-lg transition-colors">
         <div className="flex items-center gap-4 w-1/4 min-w-[250px]">
           <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0 border border-gray-100 dark:border-gray-700">
@@ -100,10 +114,10 @@ export default function MusicPlayer() {
             </Link>
             <span className="text-xs text-gray-500 dark:text-gray-400 truncate mb-0.5">
               <Link
-                href={`/artist/${currentSong.artistId}`}
-                className="hover:underline"
+                href={`/artists/${currentSong.artistId}`}
+                className="hover:underline hover:text-green-500 transition-colors"
               >
-                {currentSong.artistId}
+                {currentArtistName}
               </Link>
             </span>
             {user?.subscription === "GOLD" && (
@@ -307,9 +321,6 @@ export default function MusicPlayer() {
         </div>
       </div>
 
-      {/* ========================================= */}
-      {/* 2. MOBILE MINI PLAYER */}
-      {/* ========================================= */}
       {!isFullScreen && (
         <div
           onClick={() => setIsFullScreen(true)}
@@ -330,7 +341,7 @@ export default function MusicPlayer() {
                 {currentSong.title}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {currentSong.artistId}
+                {currentArtistName}
               </span>
             </div>
           </div>
@@ -370,9 +381,6 @@ export default function MusicPlayer() {
         </div>
       )}
 
-      {/* ========================================= */}
-      {/* 3. MOBILE FULL SCREEN PLAYER */}
-      {/* ========================================= */}
       {isFullScreen && (
         <div className="md:hidden fixed inset-0 bg-white dark:bg-gray-900 z-[60] flex flex-col p-6 animate-in slide-in-from-bottom-full duration-300 transition-colors">
           <div className="flex justify-between items-center mb-8 pt-4">
@@ -432,7 +440,7 @@ export default function MusicPlayer() {
               {currentSong.title}
             </h2>
             <p className="text-lg text-gray-500 dark:text-gray-400 truncate">
-              {currentSong.artistId}
+              {currentArtistName}
             </p>
           </div>
 
@@ -566,10 +574,6 @@ export default function MusicPlayer() {
         </div>
       )}
 
-      {/* ========================================= */}
-      {/* 4. SHARED MODALS */}
-      {/* ========================================= */}
-
       {showQueue && (
         <div className="fixed bottom-[90px] right-4 md:bottom-[100px] md:right-6 w-[calc(100vw-2rem)] md:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col max-h-[400px] z-[70] transition-colors">
           <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
@@ -629,9 +633,6 @@ export default function MusicPlayer() {
                         className={`text-sm font-semibold truncate ${isPlayingThis ? "text-green-700 dark:text-green-400" : "text-gray-900 dark:text-gray-200"}`}
                       >
                         {song.title}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {song.artistId}
                       </span>
                     </div>
                   </div>

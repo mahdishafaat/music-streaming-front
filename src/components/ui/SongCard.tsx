@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Song } from "@/types";
 import { usePlayer } from "@/context/PlayerContext";
 import AddToPlaylistModal from "./AddToPlaylistModal";
@@ -31,7 +32,7 @@ export default function SongCard({
   };
 
   const handleAddClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // این خط خیلی مهمه تا وقتی رو دکمه + می‌زنی، آهنگ پلی نشه
+    e.stopPropagation();
     setIsModalOpen(true);
   };
 
@@ -82,13 +83,18 @@ export default function SongCard({
             >
               {song.title}
             </h3>
-            <span className="text-sm text-gray-500 dark:text-gray-400 truncate">
+            
+            {/* تغییر span به Link برای هدایت به صفحه هنرمند */}
+            <Link
+              href={`/artists/${song.artistId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm text-gray-500 dark:text-gray-400 truncate hover:text-green-600 dark:hover:text-green-400 hover:underline transition-colors w-fit"
+            >
               {artistName}
-            </span>
+            </Link>
           </div>
         </div>
 
-        {/* این بخش تغییر کرده تا دکمه + اضافه بشه */}
         <div className="flex items-center gap-2 pl-4 flex-shrink-0">
           <button
             onClick={handleAddClick}

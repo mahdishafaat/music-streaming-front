@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getStorageItem } from "@/utils/storage";
-import { Album, Song, User } from "@/types";
+import { Album, Song, Artist } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
 
@@ -12,15 +12,13 @@ export default function HomePage() {
   const { user } = useAuth();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
-  const [artists, setArtists] = useState<User[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]); // تغییر به Artist
 
   useEffect(() => {
-    // با قرار دادن منطق درون یک تابع ناهمگام، استیت‌ها در چرخه بعدی جاوااسکریپت آپدیت می‌شوند
-    // و از رندر آبشاری (Cascading Render) جلوگیری می‌شود.
     const loadData = async () => {
       const storedAlbums = getStorageItem<Album[]>("albums") || [];
       const storedSongs = getStorageItem<Song[]>("songs") || [];
-      const storedArtists = getStorageItem<User[]>("artists") || [];
+      const storedArtists = getStorageItem<Artist[]>("artists") || [];
 
       setAlbums(storedAlbums);
       setSongs(storedSongs);
@@ -30,23 +28,20 @@ export default function HomePage() {
     loadData();
   }, []);
 
-  // یک تابع کمکی برای پیدا کردن نام هنرمند از روی آیدی
   const getArtistName = (artistId: string) => {
     const artist = artists.find((a) => a.id === artistId);
-    return artist ? artist.displayName : "Unknown Artist";
+    // استفاده از .name به جای .displayName
+    return artist ? artist.name : "Unknown Artist";
   };
 
   return (
     <div className="flex flex-col gap-10 pb-8 transition-colors">
-      {/* پیام خوش‌آمدگویی */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors">
           Good morning, {user?.displayName?.split(" ")[0] || "Guest"}
         </h1>
       </div>
 
-      {/* بخش اختصاصی اشتراک طلایی (دسترسی زودهنگام) */}
-      {/* نکته: چون این بخش بک‌گراند رنگی ثابت (گرادیانت سبز) داره، نیازی به دارک‌تم نداره و تو هر دو حالت عالی دیده می‌شه */}
       {user?.subscription === "GOLD" && (
         <section className="bg-gradient-to-r from-green-600 to-green-400 rounded-2xl p-6 text-white shadow-md">
           <div className="flex items-center justify-between mb-4">
@@ -58,7 +53,6 @@ export default function HomePage() {
             Listen to the newest drops before anyone else.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* اینجا بعداً آهنگ‌های ویژه قرار می‌گیره */}
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 flex items-center gap-4 cursor-pointer hover:bg-white/30 transition-colors">
               <div className="w-12 h-12 bg-white/40 rounded-lg flex-shrink-0 animate-pulse"></div>
               <div className="flex-1">
@@ -70,7 +64,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* آخرین آلبوم‌ها */}
       <section>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">
@@ -91,7 +84,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* آهنگ‌های پرشنونده */}
       <section>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
           Most Listened Songs
@@ -104,7 +96,6 @@ export default function HomePage() {
                 key={song.id}
                 song={song}
                 artistName={getArtistName(song.artistId)}
-                // اضافه کردن این خط برای ارسال کل آهنگ‌های صفحه به عنوان صف پخش
                 contextSongs={songs}
               />
             ))}

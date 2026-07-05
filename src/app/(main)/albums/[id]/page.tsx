@@ -4,8 +4,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { getStorageItem } from "@/utils/storage";
-import { Album, Song, User } from "@/types";
+import { Album, Song, Artist } from "@/types";
 import SongCard from "@/components/ui/SongCard";
 import { usePlayer } from "@/context/PlayerContext";
 
@@ -16,30 +17,26 @@ export default function AlbumDetailsPage() {
   const { playSong } = usePlayer();
 
   const [album, setAlbum] = useState<Album | null>(null);
-  const [artist, setArtist] = useState<User | null>(null);
+  const [artist, setArtist] = useState<Artist | null>(null); // تغییر به Artist
   const [albumSongs, setAlbumSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchAlbumData = async () => {
-      // دریافت تمام دیتاها از استوریج
       const allAlbums = getStorageItem<Album[]>("albums") || [];
       const allSongs = getStorageItem<Song[]>("songs") || [];
-      const allArtists = getStorageItem<User[]>("artists") || [];
+      const allArtists = getStorageItem<Artist[]>("artists") || [];
 
-      // پیدا کردن آلبوم فعلی با استفاده از ID موجود در URL
       const foundAlbum = allAlbums.find((a) => a.id === albumId);
 
       if (foundAlbum) {
         setAlbum(foundAlbum);
 
-        // پیدا کردن هنرمندِ این آلبوم
         const foundArtist = allArtists.find(
           (a) => a.id === foundAlbum.artistId,
         );
         if (foundArtist) setArtist(foundArtist);
 
-        // فیلتر کردن آهنگ‌هایی که متعلق به این آلبوم هستن
         const filteredSongs = allSongs.filter(
           (song) => song.albumId === albumId,
         );
@@ -52,10 +49,8 @@ export default function AlbumDetailsPage() {
     fetchAlbumData();
   }, [albumId]);
 
-  // هندلر برای پخش کل آلبوم
   const handlePlayAlbum = () => {
     if (albumSongs.length > 0) {
-      // آهنگ اول رو پخش می‌کنیم و کل آهنگ‌های آلبوم رو به عنوان صف می‌فرستیم
       playSong(albumSongs[0], albumSongs);
     }
   };
@@ -86,7 +81,6 @@ export default function AlbumDetailsPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-10 transition-colors">
-      {/* هدر آلبوم (کاور، عنوان، اطلاعات هنرمند) */}
       <div className="flex flex-col md:flex-row items-end gap-6 pb-6 border-b border-gray-200 dark:border-gray-700">
         <div className="relative w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <Image
@@ -107,20 +101,25 @@ export default function AlbumDetailsPage() {
           </h1>
 
           <div className="flex items-center gap-2 mt-2">
-            <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-              {artist?.profileImage && (
-                <Image
-                  src={artist.profileImage}
-                  alt={artist.displayName}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              )}
-            </div>
-            <span className="font-bold text-gray-900 dark:text-white">
-              {artist?.displayName || "Unknown Artist"}
-            </span>
+            <Link 
+              href={artist ? `/artists/${artist.id}` : "#"} 
+              className="flex items-center gap-2 hover:underline decoration-gray-400"
+            >
+              <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                {artist?.imageUrl && (
+                  <Image
+                    src={artist.imageUrl}
+                    alt={artist.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                )}
+              </div>
+              <span className="font-bold text-gray-900 dark:text-white">
+                {artist?.name || "Unknown Artist"}
+              </span>
+            </Link>
             <span className="text-gray-500 dark:text-gray-400 text-sm">
               • {new Date(album.releaseDate).getFullYear()}
             </span>
@@ -131,7 +130,6 @@ export default function AlbumDetailsPage() {
         </div>
       </div>
 
-      {/* دکمه‌های کنترل (پخش کل آلبوم) */}
       <div className="flex items-center gap-4">
         <button
           onClick={handlePlayAlbum}
@@ -142,24 +140,8 @@ export default function AlbumDetailsPage() {
             <path d="M8 5v14l11-7z" />
           </svg>
         </button>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-900 dark:hover:border-white hover:text-gray-900 dark:hover:text-white transition-colors">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            ></path>
-          </svg>
-        </button>
       </div>
 
-      {/* لیست آهنگ‌های آلبوم */}
       <div className="flex flex-col gap-2 mt-4">
         <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 mb-2">
           <div className="w-8 text-center">#</div>
@@ -174,15 +156,13 @@ export default function AlbumDetailsPage() {
         ) : (
           albumSongs.map((song, index) => (
             <div key={song.id} className="flex items-center gap-4 group">
-              {/* شماره آهنگ تو آلبوم */}
               <div className="w-8 text-center text-sm font-medium text-gray-400 dark:text-gray-500">
                 {index + 1}
               </div>
               <div className="flex-1">
-                {/* از همون SongCard قبلی استفاده می‌کنیم تا یکپارچگی حفظ بشه */}
                 <SongCard
                   song={song}
-                  artistName={artist?.displayName || "Unknown Artist"}
+                  artistName={artist?.name || "Unknown Artist"}
                   contextSongs={albumSongs}
                 />
               </div>
