@@ -49,3 +49,15 @@ export interface Playlist {
   coverImage?: string;
   createdAt: string;
 }
+
+export interface Notification {
+  id: string;
+  userId: string; // آیدی کاربری که این اعلان برای اوست
+  title: string;
+  message: string;
+  isRead: boolean;
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'; // برای استایل‌دهی متفاوت
+  createdAt: string;
+  link?: string; // لینک اختیاری (مثلاً برای هدایت به صفحه اثر جدید)
+  targetRole?: 'USER' | 'ARTIST' | 'ADMIN'; // نقشی که این اعلان براش مناسبه
+}

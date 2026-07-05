@@ -1,5 +1,5 @@
 // src/utils/mockData.ts
-import { Song, Album, User } from "@/types";
+import { Song, Album, User, Notification } from "@/types";
 import { getStorageItem, setStorageItem } from "./storage";
 
 export const mockArtists: User[] = [
@@ -160,6 +160,54 @@ Me and my friends at the table doing shots
 Drinking fast and then we talk slow`,
   },
 ];
+export const mockNotifications: Notification[] = [
+  // 1. User Notification: Subscription Expiry Warning
+  {
+    id: 'notif_1',
+    userId: 'user_1',
+    title: 'Subscription Expiring Soon',
+    message: 'Your GOLD subscription will expire in 3 days. Please renew your plan to avoid losing access to premium features.',
+    isRead: false,
+    type: 'WARNING',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    targetRole: 'USER',
+  },
+  // 2. User Notification: New Release
+  {
+    id: 'notif_2',
+    userId: 'user_1',
+    title: 'New Release Available!',
+    message: 'Your favorite artist The Weeknd just dropped a new album. Listen to it now!',
+    isRead: true,
+    type: 'INFO',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    link: '/albums/album_1',
+    targetRole: 'USER',
+  },
+  // 3. Artist Notification: Account Verification Result
+  {
+    id: 'notif_3',
+    userId: 'artist_1',
+    title: 'Account Verified',
+    message: 'Congratulations! Your account has been approved as an artist. You now have the "Verified Artist" badge.',
+    isRead: false,
+    type: 'SUCCESS',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+    targetRole: 'ARTIST',
+  },
+  // 4. Admin Notification: New Verification Request
+  {
+    id: 'notif_4',
+    userId: 'admin_1',
+    title: 'New Verification Request',
+    message: 'User Daft Punk has requested an artist account upgrade. Please review their submitted documents.',
+    isRead: false,
+    type: 'INFO',
+    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    targetRole: 'ADMIN',
+  }
+];
+
 export const initializeMockDatabase = () => {
   // نکته مهم: برای اینکه دیتای جدید و لیریکس‌ها حتماً اعمال بشن،
   // اینجا دیتای مربوط به آهنگ‌ها و آلبوم‌ها رو با مقادیر جدید بازنویسی (Override) می‌کنیم.
@@ -167,10 +215,16 @@ export const initializeMockDatabase = () => {
   setStorageItem("albums", mockAlbums);
   setStorageItem("songs", mockSongs);
 
+  // اضافه کردن اعلانات تستی در صورتی که وجود نداشتند
+  const existingNotifs = getStorageItem("notifications");
+  if (!existingNotifs) {
+    setStorageItem("notifications", mockNotifications);
+  }
+
   // پلی‌لیست‌ها رو فقط اگر وجود نداشتن می‌سازیم تا دیتای کاربر پاک نشه
   const existingPlaylists = getStorageItem("playlists");
   if (!existingPlaylists) {
     setStorageItem("playlists", []);
   }
-  console.log("Mock database forcibly updated with lyrics and 5 songs.");
+  console.log("Mock database forcibly updated.")
 };
