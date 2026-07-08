@@ -1,5 +1,5 @@
 // src/utils/mockData.ts
-import { Song, Album, Notification, Artist } from "@/types";
+import { Song, Album, Notification, Artist, User } from "@/types";
 import { getStorageItem, setStorageItem } from "./storage";
 
 export const mockArtists: Artist[] = [
@@ -140,7 +140,7 @@ And our cups to the stars`,
     id: "song_6",
     title: "Shape of You (Single)",
     artistId: "artist_1",
-    albumId: "", 
+    albumId: "",
     coverImage: "https://picsum.photos/seed/single1/300/300",
     audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
     streamsCount: 6500000,
@@ -154,52 +154,92 @@ Drinking fast and then we talk slow`,
 
 export const mockNotifications: Notification[] = [
   {
-    id: 'notif_1',
-    userId: 'user_1',
-    title: 'Subscription Expiring Soon',
-    message: 'Your GOLD subscription will expire in 3 days. Please renew your plan to avoid losing access to premium features.',
+    id: "notif_1",
+    userId: "user_1",
+    title: "Subscription Expiring Soon",
+    message:
+      "Your GOLD subscription will expire in 3 days. Please renew your plan to avoid losing access to premium features.",
     isRead: false,
-    type: 'WARNING',
+    type: "WARNING",
     createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    targetRole: 'USER',
+    targetRole: "USER",
   },
   {
-    id: 'notif_2',
-    userId: 'user_1',
-    title: 'New Release Available!',
-    message: 'Your favorite artist The Weeknd just dropped a new album. Listen to it now!',
+    id: "notif_2",
+    userId: "user_1",
+    title: "New Release Available!",
+    message:
+      "Your favorite artist The Weeknd just dropped a new album. Listen to it now!",
     isRead: true,
-    type: 'INFO',
+    type: "INFO",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    link: '/albums/album_1',
-    targetRole: 'USER',
+    link: "/albums/album_1",
+    targetRole: "USER",
   },
   {
-    id: 'notif_3',
-    userId: 'artist_1',
-    title: 'Account Verified',
-    message: 'Congratulations! Your account has been approved as an artist. You now have the "Verified Artist" badge.',
+    id: "notif_3",
+    userId: "artist_1",
+    title: "Account Verified",
+    message:
+      'Congratulations! Your account has been approved as an artist. You now have the "Verified Artist" badge.',
     isRead: false,
-    type: 'SUCCESS',
+    type: "SUCCESS",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    targetRole: 'ARTIST',
+    targetRole: "ARTIST",
   },
   {
-    id: 'notif_4',
-    userId: 'admin_1',
-    title: 'New Verification Request',
-    message: 'User Daft Punk has requested an artist account upgrade. Please review their submitted documents.',
+    id: "notif_4",
+    userId: "admin_1",
+    title: "New Verification Request",
+    message:
+      "User Daft Punk has requested an artist account upgrade. Please review their submitted documents.",
     isRead: false,
-    type: 'INFO',
+    type: "INFO",
     createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    targetRole: 'ADMIN',
-  }
+    targetRole: "ADMIN",
+  },
+];
+
+export const mockUsers: User[] = [
+  {
+    id: "admin_1",
+    username: "super_admin",
+    displayName: "System Admin",
+    email: "admin@test.com",
+    role: "ADMIN",
+    subscription: "GOLD",
+    followersCount: 0,
+    followingCount: 0,
+    profileImage: "https://i.pravatar.cc/150?u=admin",
+  },
+  {
+    id: "support_1",
+    username: "support_team",
+    displayName: "Support Team", // نام تیم پشتیبانی انگلیسی شد
+    email: "support@test.com",
+    role: "SUPPORT",
+    subscription: "GOLD",
+    followersCount: 0,
+    followingCount: 0,
+    profileImage: "https://i.pravatar.cc/150?u=support",
+  },
+  {
+    id: "user_1",
+    username: "normal_user",
+    displayName: "Normal User", // کاربر عادی
+    email: "user@test.com",
+    role: "LISTENER",
+    subscription: "BASE",
+    followersCount: 15,
+    followingCount: 20,
+  },
 ];
 
 export const initializeMockDatabase = () => {
   setStorageItem("artists", mockArtists);
   setStorageItem("albums", mockAlbums);
   setStorageItem("songs", mockSongs);
+  setStorageItem("users", mockUsers); // اضافه شدن کاربران به دیتابیس
 
   const existingNotifs = getStorageItem("notifications");
   if (!existingNotifs) {
