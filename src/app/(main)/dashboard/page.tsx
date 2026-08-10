@@ -6,13 +6,19 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 type Tab = "artists" | "tickets" | "audit" | "system";
-type ArtistRequest = {
-  id: string;
-  name: string;
-  email: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
-  portfolioUrl: string;
+
+// تطابق تایپ با ArtistRequestListSerializer در بک‌اند
+type RealArtistRequest = {
+  id: number;
+  user_email: string;
+  user_display_name: string;
+  stage_name: string;
+  portfolio: string;
+  status: "pending" | "approved" | "rejected";
+  reason: string;
+  created_at: string;
 };
+
 type Ticket = {
   id: string;
   userName: string;
@@ -34,22 +40,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("artists");
 
-  const [artistRequests, setArtistRequests] = useState<ArtistRequest[]>([
-    {
-      id: "req_1",
-      name: "Dua Lipa",
-      email: "dua@example.com",
-      status: "PENDING",
-      portfolioUrl: "https://spotify.com/dualipa",
-    },
-    {
-      id: "req_2",
-      name: "Martin Garrix",
-      email: "martin@example.com",
-      status: "PENDING",
-      portfolioUrl: "https://soundcloud.com/martin",
-    },
-  ]);
+  // استیت واقعی درخواست‌های هنرمندان متصل به بک‌اند
+  const [artistRequests, setArtistRequests] = useState<RealArtistRequest[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
   const [tickets, setTickets] = useState<Ticket[]>([
     {
@@ -89,36 +82,97 @@ export default function DashboardPage() {
 
   const [silverPrice, setSilverPrice] = useState(4.99);
   const [goldPrice, setGoldPrice] = useState(9.99);
-
   const [activeTicketChat, setActiveTicketChat] = useState<Ticket | null>(null);
 
+  // واکشی داده‌های واقعی درخواست‌های هنرمندان از بک‌اند
+  const fetchArtistRequests = async () => {
+    setIsLoadingRequests(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        "http://127.0.0.1:8000/accounts/artist-requests/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setArtistRequests(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch artist requests", error);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
+
   useEffect(() => {
-    if (user && user.role !== "ADMIN" && user.role !== "SUPPORT") {
+    if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
+      if (activeTab === "artists") {
+        fetchArtistRequests();
+      }
+    } else if (user) {
       router.push("/");
     }
-  }, [user, router]);
+  }, [user, router, activeTab]);
 
   if (!user) return <div className="p-10 text-center">Loading...</div>;
   if (user.role !== "ADMIN" && user.role !== "SUPPORT") return null;
 
   const isAdmin = user.role === "ADMIN";
 
-  const handleApproveArtist = (id: string) => {
-    setArtistRequests((prev) =>
-      prev.map((req) => (req.id === id ? { ...req, status: "APPROVED" } : req)),
-    );
-    alert("Artist approved and notification sent successfully.");
+  // ارسال درخواست PATCH به بک‌اند برای تایید
+  const handleApproveArtist = async (id: number) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `http://127.0.0.1:8000/accounts/artist-requests/${id}/`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: "approved" }),
+        },
+      );
+      if (res.ok) {
+        alert(
+          "Artist approved successfully. Backend created Artist profile automatically!",
+        );
+        fetchArtistRequests(); // رفرش لیست
+      } else {
+        alert("Failed to approve artist.");
+      }
+    } catch (e) {
+      alert("Network error.");
+    }
   };
 
-  const handleRejectArtist = (id: string) => {
+  // ارسال درخواست PATCH به بک‌اند برای رد کردن (به همراه دلیل)
+  const handleRejectArtist = async (id: number) => {
     const reason = prompt("Please enter the reason for rejection:");
-    if (reason) {
-      setArtistRequests((prev) =>
-        prev.map((req) =>
-          req.id === id ? { ...req, status: "REJECTED" } : req,
-        ),
-      );
-      alert(`Request rejected. Reason: ${reason}`);
+    if (reason !== null) {
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch(
+          `http://127.0.0.1:8000/accounts/artist-requests/${id}/`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: "rejected", reason }),
+          },
+        );
+        if (res.ok) {
+          alert(`Request rejected. Reason: ${reason}`);
+          fetchArtistRequests(); // رفرش لیست
+        }
+      } catch (e) {
+        alert("Network error.");
+      }
     }
   };
 
@@ -141,70 +195,89 @@ export default function DashboardPage() {
       <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
         Artist Approval Requests
       </h2>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-              <th className="p-5 font-medium">Artist Name</th>
-              <th className="p-5 font-medium">Email</th>
-              <th className="p-5 font-medium">Status</th>
-              <th className="p-5 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {artistRequests.map((req) => (
-              <tr
-                key={req.id}
-                className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <td className="p-5 font-bold text-gray-900 dark:text-white">
-                  {req.name}
-                </td>
-                <td className="p-5 text-gray-600 dark:text-gray-300">
-                  {req.email}
-                </td>
-                <td className="p-5">
-                  <span
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${
-                      req.status === "PENDING"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : req.status === "APPROVED"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {req.status}
-                  </span>
-                </td>
-                <td className="p-5 flex justify-end gap-3">
-                  <button
-                    onClick={() => window.open(req.portfolioUrl, "_blank")}
-                    className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors"
-                  >
-                    View Portfolio
-                  </button>
-                  {req.status === "PENDING" && (
-                    <>
-                      <button
-                        onClick={() => handleApproveArtist(req.id)}
-                        className="px-4 py-2 text-xs font-bold bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-colors"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleRejectArtist(req.id)}
-                        className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-colors"
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-                </td>
+
+      {isLoadingRequests ? (
+        <div className="p-8 text-center text-gray-500">
+          Loading requests from backend...
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
+                <th className="p-5 font-medium">User Name</th>
+                <th className="p-5 font-medium">Requested Stage Name</th>
+                <th className="p-5 font-medium">Email</th>
+                <th className="p-5 font-medium">Status</th>
+                <th className="p-5 font-medium text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {artistRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-gray-500">
+                    No requests found.
+                  </td>
+                </tr>
+              ) : (
+                artistRequests.map((req) => (
+                  <tr
+                    key={req.id}
+                    className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                  >
+                    <td className="p-5 text-gray-900 dark:text-white">
+                      {req.user_display_name}
+                    </td>
+                    <td className="p-5 font-bold text-gray-900 dark:text-white">
+                      {req.stage_name}
+                    </td>
+                    <td className="p-5 text-gray-600 dark:text-gray-300">
+                      {req.user_email}
+                    </td>
+                    <td className="p-5">
+                      <span
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${
+                          req.status === "pending"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : req.status === "approved"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="p-5 flex justify-end gap-3">
+                      <button
+                        onClick={() => window.open(req.portfolio, "_blank")}
+                        className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors"
+                      >
+                        Portfolio
+                      </button>
+                      {req.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() => handleApproveArtist(req.id)}
+                            className="px-4 py-2 text-xs font-bold bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-colors"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectArtist(req.id)}
+                            className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 
@@ -213,7 +286,6 @@ export default function DashboardPage() {
       <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
         Support Tickets
       </h2>
-
       {activeTicketChat ? (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-[600px] shadow-sm">
           <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
@@ -291,7 +363,7 @@ export default function DashboardPage() {
                 <tr
                   key={tck.id}
                   onClick={() => setActiveTicketChat(tck)}
-                  className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer group"
+                  className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer group"
                 >
                   <td className="p-5 font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors">
                     {tck.id}
@@ -346,7 +418,7 @@ export default function DashboardPage() {
             {audits.map((audit) => (
               <tr
                 key={audit.artistId}
-                className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
               >
                 <td className="p-5">
                   <p className="font-bold text-gray-900 dark:text-white">
