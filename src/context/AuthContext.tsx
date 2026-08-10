@@ -3,16 +3,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types";
-import {
-  getStorageItem,
-  setStorageItem,
-  removeStorageItem,
-} from "@/utils/storage";
-import { initializeMockDatabase } from "@/utils/mockData";
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void;
+  // تابع لاگین حالا توکن‌ها رو هم دریافت می‌کنه
+  login: (userData: User, tokens: { access: string; refresh: string }) => void;
   logout: () => void;
 }
 
@@ -22,27 +17,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // با استفاده از یک تابع ناهمگام (async)، آپدیت استیت رو به چرخه بعدی موکول می‌کنیم
-    // تا از رندرهای آبشاری و گیر دادن لینتر جلوگیری بشه
-    const initializeAuth = async () => {
-      initializeMockDatabase();
-      const storedUser = getStorageItem<User>("currentUser");
-      if (storedUser) {
-        setUser(storedUser);
-      }
-    };
+    // هنگام لود شدن صفحه، بررسی می‌کنیم که آیا یوزر از قبل لاگین بوده یا خیر
+    const storedUser = localStorage.getItem("user");
+    const accessToken = localStorage.getItem("access_token");
 
-    initializeAuth();
+    if (storedUser && accessToken) {
+      setUser(JSON.parse(storedUser));
+    }
   }, []);
 
-  const login = (userData: User) => {
+  const login = (
+    userData: User,
+    tokens: { access: string; refresh: string },
+  ) => {
     setUser(userData);
-    setStorageItem("currentUser", userData);
+    // ذخیره اطلاعات کاربر و توکن‌های JWT در مرورگر
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("access_token", tokens.access);
+    localStorage.setItem("refresh_token", tokens.refresh);
   };
 
   const logout = () => {
     setUser(null);
-    removeStorageItem("currentUser");
+    localStorage.removeItem("user");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
   };
 
   return (

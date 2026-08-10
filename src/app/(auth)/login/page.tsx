@@ -6,48 +6,60 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { User } from "@/types";
-import { getStorageItem } from "@/utils/storage";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
-    // ۱. دریافت لیست تمام کاربران تستی از دیتابیس لوکال
-    const users = getStorageItem<User[]>("users") || [];
+    try {
+      const response = await fetch("http://127.0.0.1:8000/accounts/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // ۲. بررسی اینکه آیا ایمیل وارد شده با کاربران تستی ما (ادمین یا پشتیبان) تطابق دارد یا خیر
-    const existingUser = users.find((u) => u.email === email);
+      const data = await response.json();
 
-    if (existingUser) {
-      // اگر کاربر پیدا شد (مثلاً admin@test.com وارد شده بود)، با اطلاعات واقعی خودش لاگین کن
-      login(existingUser);
+      if (response.ok) {
+        // ساخت آبجکت کاربر بر اساس دیتایی که از بک‌اند اومده
+        const loggedInUser: User = {
+          id: data.user.id.toString(),
+          username: data.user.email.split("@")[0], // فیلبک موقت
+          displayName: data.user.display_name,
+          email: data.user.email,
+          role: data.user.role.toUpperCase(), // مثلا تبدیل 'admin' به 'ADMIN'
+          // این مقادیر رو فعلا پیش‌فرض می‌دیم تا در فازهای بعدی از بک‌اند بگیریم
+          subscription: "BASE",
+          followersCount: 0,
+          followingCount: 0,
+        };
 
-      // اگر ادمین یا پشتیبان بود، مستقیم بفرستش داشبورد، وگرنه بفرست صفحه اصلی
-      if (existingUser.role === "ADMIN" || existingUser.role === "SUPPORT") {
-        router.push("/dashboard");
+        // ارسال یوزر و توکن‌ها به کانتکست
+        login(loggedInUser, { access: data.access, refresh: data.refresh });
+
+        if (loggedInUser.role === "ADMIN" || loggedInUser.role === "SUPPORT") {
+          router.push("/dashboard");
+        } else {
+          router.push("/");
+        }
       } else {
-        router.push("/");
+        // مدیریت خطاهایی که از بک‌اند میاد
+        setError(data.non_field_errors?.[0] || "Invalid email or password.");
       }
-    } else {
-      // اگر ایمیل جدید بود، یک کاربر عادی (LISTENER) بساز و لاگین کن
-      const mockUser: User = {
-        id: `test-id-${Date.now()}`,
-        username: email.split("@")[0],
-        displayName: "Test User",
-        email: email,
-        role: "LISTENER",
-        subscription: "BASE",
-        followersCount: 0,
-        followingCount: 0,
-      };
-
-      login(mockUser);
-      router.push("/");
+    } catch (err) {
+      setError("Failed to connect to the server.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,6 +73,12 @@ export default function LoginPage() {
           <p className="text-gray-500">Sign in to your account</p>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">Email</label>
@@ -70,7 +88,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-400 transition-all"
-              placeholder="Enter your email (e.g. admin@test.com)"
+              placeholder="Enter your email"
             />
           </div>
 
@@ -92,32 +110,18 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-400 transition-all"
-              placeholder="Enter any password"
+              placeholder="Enter your password"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-green-600 text-white font-medium py-3 rounded-xl hover:bg-green-700 transition-colors mt-2"
+            disabled={isLoading}
+            className="w-full bg-green-600 text-white font-medium py-3 rounded-xl hover:bg-green-700 transition-colors mt-2 disabled:opacity-50"
           >
-            Sign In
+            {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-
-        {/* اضافه کردن راهنمای ورود برای دسترسی سریع‌تر تو زمان تست */}
-        <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-500 text-left">
-          <p className="font-bold mb-1">تست اکانت‌ها (رمز دلخواه):</p>
-          <ul className="list-disc pl-4 space-y-1">
-            <li>
-              Admin:{" "}
-              <code className="bg-gray-200 px-1 rounded">admin@test.com</code>
-            </li>
-            <li>
-              Support:{" "}
-              <code className="bg-gray-200 px-1 rounded">support@test.com</code>
-            </li>
-          </ul>
-        </div>
 
         <p className="text-center text-gray-600 mt-6 text-sm">
           Don&apos;t have an account?{" "}
