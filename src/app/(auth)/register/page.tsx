@@ -21,7 +21,7 @@ export default function RegisterPage() {
   // State نمایش حریم خصوصی
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
@@ -61,7 +61,8 @@ export default function RegisterPage() {
         const firstError = Object.values(data)[0] as string[];
         setError(firstError[0] || "Registration failed. Please try again.");
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Registration Error:", error);
       setError("Failed to connect to the server.");
     } finally {
       setIsLoading(false);

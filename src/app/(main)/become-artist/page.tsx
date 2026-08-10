@@ -28,7 +28,7 @@ export default function BecomeArtistPage() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage({ text: "", type: "" });
@@ -72,7 +72,8 @@ export default function BecomeArtistPage() {
           type: "error",
         });
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Artist Request Error:", error);
       setMessage({
         text: "Cannot connect to the server. Make sure backend is running.",
         type: "error",

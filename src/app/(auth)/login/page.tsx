@@ -16,7 +16,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
@@ -56,7 +56,8 @@ export default function LoginPage() {
         // مدیریت خطاهایی که از بک‌اند میاد
         setError(data.non_field_errors?.[0] || "Invalid email or password.");
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Login Error:", error);
       setError("Failed to connect to the server.");
     } finally {
       setIsLoading(false);

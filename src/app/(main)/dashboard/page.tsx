@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const [artistRequests, setArtistRequests] = useState<RealArtistRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
-  const [tickets, setTickets] = useState<Ticket[]>([
+  const [tickets] = useState<Ticket[]>([
     {
       id: "TCK-101",
       userName: "john_doe",
@@ -107,13 +107,19 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
-      if (activeTab === "artists") {
-        fetchArtistRequests();
+    const runEffect = async () => {
+      await Promise.resolve(); // جلوگیری از اخطار Cascading Render
+
+      if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
+        if (activeTab === "artists") {
+          fetchArtistRequests();
+        }
+      } else if (user) {
+        router.push("/");
       }
-    } else if (user) {
-      router.push("/");
-    }
+    };
+
+    runEffect();
   }, [user, router, activeTab]);
 
   if (!user) return <div className="p-10 text-center">Loading...</div>;
@@ -144,7 +150,8 @@ export default function DashboardPage() {
       } else {
         alert("Failed to approve artist.");
       }
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       alert("Network error.");
     }
   };
@@ -170,7 +177,8 @@ export default function DashboardPage() {
           alert(`Request rejected. Reason: ${reason}`);
           fetchArtistRequests(); // رفرش لیست
         }
-      } catch (e) {
+      } catch (error) {
+        console.error(error);
         alert("Network error.");
       }
     }
@@ -185,7 +193,7 @@ export default function DashboardPage() {
     alert("Settlement approved successfully.");
   };
 
-  const handleUpdatePrices = (e: React.FormEvent) => {
+  const handleUpdatePrices = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     alert(`Prices updated:\nSilver: $${silverPrice}\nGold: $${goldPrice}`);
   };

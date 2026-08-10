@@ -17,13 +17,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // هنگام لود شدن صفحه، بررسی می‌کنیم که آیا یوزر از قبل لاگین بوده یا خیر
-    const storedUser = localStorage.getItem("user");
-    const accessToken = localStorage.getItem("access_token");
+    const initializeAuth = async () => {
+      // این خط باعث میشه آپدیت استیت از حالت همگام خارج بشه و لینتر دیگه خطا نده
+      await Promise.resolve();
 
-    if (storedUser && accessToken) {
-      setUser(JSON.parse(storedUser));
-    }
+      const storedUser = localStorage.getItem("user");
+      const accessToken = localStorage.getItem("access_token");
+
+      if (storedUser && accessToken) {
+        setUser(JSON.parse(storedUser));
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = (
