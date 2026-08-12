@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-// لیست ثابت مسیرهای عمومی
 const baseNavItems = [
   { name: "Home", path: "/" },
   { name: "Playlists", path: "/playlists" },
@@ -16,13 +15,17 @@ const baseNavItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth(); // دریافت اطلاعات کاربر فعلی
+  const { user } = useAuth();
 
-  // بررسی سطح دسترسی کاربر برای نمایش داشبورد
   const hasDashboardAccess = user?.role === "ADMIN" || user?.role === "SUPPORT";
+  const hasStudioAccess = user?.role === "ARTIST"; // بررسی دسترسی هنرمند
 
-  // ساخت لیست نهایی منو به صورت داینامیک
   const navItems = [...baseNavItems];
+
+  if (hasStudioAccess) {
+    navItems.push({ name: "Studio", path: "/studio" }); // اضافه شدن استودیو
+  }
+
   if (hasDashboardAccess) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
   }
@@ -60,7 +63,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* بخش نمایش کاربر در پایین سایدبار */}
       <div className="p-4 border-t border-gray-100 dark:border-gray-700 mt-auto transition-colors flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-gray-900 dark:bg-gray-600 text-white flex items-center justify-center text-xs font-bold transition-colors uppercase flex-shrink-0">
           {user?.displayName ? user.displayName.charAt(0) : "U"}
@@ -69,7 +71,7 @@ export default function Sidebar() {
           <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
             {user?.displayName || "Guest"}
           </span>
-          {hasDashboardAccess && (
+          {(hasDashboardAccess || hasStudioAccess) && (
             <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">
               {user.role}
             </span>

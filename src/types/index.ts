@@ -28,6 +28,8 @@ export interface Song {
   lyrics?: string;
   streamsCount: number;
   listenersCount: number;
+  isLiked?: boolean;
+  likesCount?: number;
 }
 
 // ساختار داده‌ای آلبوم
@@ -56,10 +58,10 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
-  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ERROR'; // برای استایل‌دهی متفاوت
+  type: "INFO" | "WARNING" | "SUCCESS" | "ERROR"; // برای استایل‌دهی متفاوت
   createdAt: string;
   link?: string; // لینک اختیاری (مثلاً برای هدایت به صفحه اثر جدید)
-  targetRole?: 'USER' | 'ARTIST' | 'ADMIN'; // نقشی که این اعلان براش مناسبه
+  targetRole?: "USER" | "ARTIST" | "ADMIN"; // نقشی که این اعلان براش مناسبه
 }
 
 // ساختار داده‌ای هنرمند

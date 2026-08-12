@@ -4,41 +4,148 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
-import { usePlayer } from "@/context/PlayerContext"; // اضافه شدن برای پخش آهنگ‌های ویژه
-import { getStorageItem } from "@/utils/storage";
-import { Album, Song, Artist } from "@/types";
+import { usePlayer } from "@/context/PlayerContext";
+import { Album, Song } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
 
+// ۱. اضافه شدن فیلد album به ApiMusic برای رفع ارور لینتر
+interface ApiArtist {
+  id: number;
+  stage_name: string;
+}
+
+interface ApiMusic {
+  id: number;
+  title: string;
+  album?: number | null;
+  cover?: string | null;
+  audio_file: string;
+  lyrics?: string;
+  artists?: ApiArtist[];
+  streams_count: number;
+  likes_count: number;
+  is_liked: boolean;
+}
+
+interface ApiAlbum {
+  id: number;
+  title: string;
+  cover?: string | null;
+  release_date: string;
+  musics?: ApiMusic[];
+}
+
+interface DisplaySong extends Song {
+  artistName: string;
+}
+
+interface DisplayAlbum extends Album {
+  artistName: string;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
-  const { playSong } = usePlayer(); // گرفتن تابع پخش
+  const { playSong } = usePlayer();
 
-  const [albums, setAlbums] = useState<Album[]>([]);
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
+  const [albums, setAlbums] = useState<DisplayAlbum[]>([]);
+  const [songs, setSongs] = useState<DisplaySong[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      const storedAlbums = getStorageItem<Album[]>("albums") || [];
-      const storedSongs = getStorageItem<Song[]>("songs") || [];
-      const storedArtists = getStorageItem<Artist[]>("artists") || [];
-
-      setAlbums(storedAlbums);
-      setSongs(storedSongs);
-      setArtists(storedArtists);
-    };
-
-    loadData();
-  }, []);
-
-  const getArtistName = (artistId: string) => {
-    const artist = artists.find((a) => a.id === artistId);
-    return artist ? artist.name : "Unknown Artist";
+  const getFullUrl = (path?: string | null): string => {
+    if (!path) return "/default-cover.png";
+    if (path.startsWith("http")) return path;
+    return `http://127.0.0.1:8000${path}`;
   };
 
-  // گرفتن ۲ آهنگ (مثلاً ۲ آهنگ آخر دیتابیس) به عنوان آهنگ‌های ویژه گلد
-  const exclusiveSongs = songs.slice(-2);
+  useEffect(() => {
+    const fetchRealData = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+
+        // ۲. رفع ارور تایپ‌اسکریپت برای Header
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        let [musicRes, albumRes] = await Promise.all([
+          fetch("http://127.0.0.1:8000/music/musics/", {
+            headers,
+            cache: "no-store",
+          }),
+          fetch("http://127.0.0.1:8000/music/albums/", {
+            headers,
+            cache: "no-store",
+          }),
+        ]);
+
+        if (musicRes.status === 401 || albumRes.status === 401) {
+          const publicRes = await Promise.all([
+            fetch("http://127.0.0.1:8000/music/musics/", { cache: "no-store" }),
+            fetch("http://127.0.0.1:8000/music/albums/", { cache: "no-store" }),
+          ]);
+          musicRes = publicRes[0];
+          albumRes = publicRes[1];
+        }
+
+        if (musicRes.ok && albumRes.ok) {
+          const musicsData: ApiMusic[] = await musicRes.json();
+          const albumsData: ApiAlbum[] = await albumRes.json();
+
+          const mappedSongs: DisplaySong[] = musicsData.map((m: ApiMusic) => ({
+            id: m.id.toString(),
+            title: m.title,
+            artistId: m.artists?.[0]?.id?.toString() || "unknown",
+            artistName: m.artists?.[0]?.stage_name || "Unknown Artist",
+            albumId: m.album?.toString() || "",
+            coverImage: getFullUrl(m.cover),
+            audioUrl: getFullUrl(m.audio_file),
+            streamsCount: m.streams_count || 0,
+            likesCount: m.likes_count || 0,
+            isLiked: m.is_liked || false,
+            listenersCount: 0,
+            lyrics: m.lyrics || "",
+          }));
+
+          const mappedAlbums: DisplayAlbum[] = albumsData.map(
+            (a: ApiAlbum) => ({
+              id: a.id.toString(),
+              title: a.title,
+              artistId:
+                a.musics?.[0]?.artists?.[0]?.id?.toString() || "unknown",
+              artistName:
+                a.musics?.[0]?.artists?.[0]?.stage_name || "Various Artists",
+              coverImage: getFullUrl(a.cover),
+              releaseDate: a.release_date,
+              songIds: a.musics?.map((m) => m.id.toString()) || [],
+            }),
+          );
+
+          setSongs(mappedSongs);
+          setAlbums(mappedAlbums);
+        } else {
+          console.error("API returned an error. Check Django console.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch real data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRealData();
+  }, []);
+
+  const exclusiveSongs = songs.slice(0, 2);
+
+  if (isLoading) {
+    return (
+      <div className="p-10 text-center font-bold text-gray-500">
+        Loading fresh drops...
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-10 pb-8 transition-colors">
@@ -49,7 +156,7 @@ export default function HomePage() {
       </div>
 
       {user?.subscription === "GOLD" && (
-        <section className="bg-gradient-to-r from-green-600 to-green-400 rounded-2xl p-6 text-white shadow-md">
+        <section className="bg-gradient-to-r from-green-600 to-green-400 rounded-2xl p-6 text-white shadow-md animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">
               🌟 Gold Exclusive: Early Access
@@ -89,7 +196,7 @@ export default function HomePage() {
                       {song.title}
                     </h4>
                     <p className="text-sm text-green-100 truncate">
-                      {getArtistName(song.artistId)}
+                      {song.artistName}
                     </p>
                   </div>
                 </div>
@@ -103,43 +210,48 @@ export default function HomePage() {
         </section>
       )}
 
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">
-            Latest Albums
-          </h2>
-          <button className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-            Show all
-          </button>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {albums.map((album) => (
-            <AlbumCard
-              key={album.id}
-              album={album}
-              artistName={getArtistName(album.artistId)}
-            />
-          ))}
-        </div>
-      </section>
+      {albums.length > 0 && (
+        <section className="animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">
+              Latest Albums
+            </h2>
+            <button className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
+              Show all
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {albums.map((album) => (
+              <AlbumCard
+                key={album.id}
+                album={album}
+                artistName={album.artistName}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-      <section>
+      <section className="animate-fade-in">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
-          Most Listened Songs
+          All Tracks
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* برای اینکه دیتای اصلیمون به هم نریزه، یک کپی از آرایه می‌گیریم و بعد سورت می‌کنیم */}
-          {[...songs]
-            .sort((a, b) => b.listenersCount - a.listenersCount)
-            .map((song) => (
+        {songs.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+            No tracks found. Go to Studio and upload some!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {songs.map((song) => (
               <SongCard
                 key={song.id}
                 song={song}
-                artistName={getArtistName(song.artistId)}
+                artistName={song.artistName}
                 contextSongs={songs}
               />
             ))}
-        </div>
+          </div>
+        )}
       </section>
     </div>
   );

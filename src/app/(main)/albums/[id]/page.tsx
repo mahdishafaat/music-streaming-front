@@ -4,60 +4,116 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
-import { getStorageItem } from "@/utils/storage";
-import { Album, Song, Artist } from "@/types";
-import SongCard from "@/components/ui/SongCard";
 import { usePlayer } from "@/context/PlayerContext";
+import SongCard from "@/components/ui/SongCard";
+import { Song } from "@/types";
+
+interface ApiArtist {
+  id: number;
+  stage_name: string;
+}
+
+interface ApiMusic {
+  id: number;
+  title: string;
+  cover?: string | null;
+  audio_file: string;
+  lyrics?: string;
+  artists?: ApiArtist[];
+  streams_count: number;
+  likes_count: number;
+  is_liked: boolean;
+}
+
+interface ApiAlbum {
+  id: number;
+  title: string;
+  cover?: string | null;
+  release_date: string;
+  musics?: ApiMusic[];
+}
+
+interface DisplaySong extends Song {
+  artistName: string;
+}
 
 export default function AlbumDetailsPage() {
-  const params = useParams();
+  const { id } = useParams();
   const router = useRouter();
-  const albumId = params.id as string;
   const { playSong } = usePlayer();
 
-  const [album, setAlbum] = useState<Album | null>(null);
-  const [artist, setArtist] = useState<Artist | null>(null); // تغییر به Artist
-  const [albumSongs, setAlbumSongs] = useState<Song[]>([]);
+  const [album, setAlbum] = useState<ApiAlbum | null>(null);
+  const [songs, setSongs] = useState<DisplaySong[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getFullUrl = (path?: string | null): string => {
+    if (!path) return "/default-cover.png";
+    if (path.startsWith("http")) return path;
+    return `http://127.0.0.1:8000${path}`;
+  };
+
   useEffect(() => {
-    const fetchAlbumData = async () => {
-      const allAlbums = getStorageItem<Album[]>("albums") || [];
-      const allSongs = getStorageItem<Song[]>("songs") || [];
-      const allArtists = getStorageItem<Artist[]>("artists") || [];
+    const fetchAlbum = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
 
-      const foundAlbum = allAlbums.find((a) => a.id === albumId);
+        let res = await fetch(`http://127.0.0.1:8000/music/albums/${id}/`, {
+          headers,
+          cache: "no-store",
+        });
 
-      if (foundAlbum) {
-        setAlbum(foundAlbum);
+        if (res.status === 401) {
+          res = await fetch(`http://127.0.0.1:8000/music/albums/${id}/`, {
+            cache: "no-store",
+          });
+        }
 
-        const foundArtist = allArtists.find(
-          (a) => a.id === foundAlbum.artistId,
-        );
-        if (foundArtist) setArtist(foundArtist);
+        if (res.ok) {
+          const data: ApiAlbum = await res.json();
+          setAlbum(data);
 
-        const filteredSongs = allSongs.filter(
-          (song) => song.albumId === albumId,
-        );
-        setAlbumSongs(filteredSongs);
+          const mappedSongs: DisplaySong[] = (data.musics || []).map(
+            (m: ApiMusic) => ({
+              id: m.id.toString(),
+              title: m.title,
+              artistId: m.artists?.[0]?.id?.toString() || "unknown",
+              artistName: m.artists?.[0]?.stage_name || "Unknown Artist",
+              albumId: data.id.toString(),
+              coverImage: getFullUrl(m.cover || data.cover),
+              audioUrl: getFullUrl(m.audio_file),
+              streamsCount: m.streams_count || 0,
+              likesCount: m.likes_count || 0,
+              isLiked: m.is_liked || false,
+              listenersCount: 0,
+              lyrics: m.lyrics || "",
+            }),
+          );
+
+          setSongs(mappedSongs);
+        }
+      } catch (error) {
+        console.error("Error fetching album:", error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
 
-    fetchAlbumData();
-  }, [albumId]);
+    if (id) fetchAlbum();
+  }, [id]);
 
   const handlePlayAlbum = () => {
-    if (albumSongs.length > 0) {
-      playSong(albumSongs[0], albumSongs);
+    if (songs.length > 0) {
+      playSong(songs[0], songs);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64 text-gray-500 dark:text-gray-400">
+      <div className="flex justify-center items-center h-64 text-gray-500 dark:text-gray-400 font-bold">
         Loading album details...
       </div>
     );
@@ -71,7 +127,7 @@ export default function AlbumDetailsPage() {
         </h2>
         <button
           onClick={() => router.back()}
-          className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+          className="px-6 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-bold"
         >
           Go Back
         </button>
@@ -79,12 +135,15 @@ export default function AlbumDetailsPage() {
     );
   }
 
+  const albumArtistName =
+    album.musics?.[0]?.artists?.[0]?.stage_name || "Various Artists";
+
   return (
-    <div className="flex flex-col gap-8 pb-10 transition-colors">
+    <div className="flex flex-col gap-8 pb-10 transition-colors max-w-5xl mx-auto w-full animate-fade-in">
       <div className="flex flex-col md:flex-row items-end gap-6 pb-6 border-b border-gray-200 dark:border-gray-700">
         <div className="relative w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <Image
-            src={album.coverImage || "/default-cover.png"}
+            src={getFullUrl(album.cover)}
             alt={album.title}
             fill
             className="object-cover"
@@ -99,32 +158,18 @@ export default function AlbumDetailsPage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white truncate">
             {album.title}
           </h1>
-
           <div className="flex items-center gap-2 mt-2">
-            <Link 
-              href={artist ? `/artists/${artist.id}` : "#"} 
-              className="flex items-center gap-2 hover:underline decoration-gray-400"
-            >
-              <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
-                {artist?.imageUrl && (
-                  <Image
-                    src={artist.imageUrl}
-                    alt={artist.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                )}
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">
-                {artist?.name || "Unknown Artist"}
-              </span>
-            </Link>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">
-              • {new Date(album.releaseDate).getFullYear()}
+            <span className="font-bold text-gray-900 dark:text-white">
+              {albumArtistName}
             </span>
             <span className="text-gray-500 dark:text-gray-400 text-sm">
-              • {albumSongs.length} songs
+              •{" "}
+              {album.release_date
+                ? album.release_date.split("-")[0]
+                : "Unknown"}
+            </span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">
+              • {songs.length} songs
             </span>
           </div>
         </div>
@@ -133,7 +178,7 @@ export default function AlbumDetailsPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={handlePlayAlbum}
-          disabled={albumSongs.length === 0}
+          disabled={songs.length === 0}
           className="w-14 h-14 flex items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-500 hover:scale-105 transition-all shadow-lg shadow-green-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-7 h-7 ml-1" fill="currentColor" viewBox="0 0 24 24">
@@ -145,16 +190,15 @@ export default function AlbumDetailsPage() {
       <div className="flex flex-col gap-2 mt-4">
         <div className="flex items-center px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 mb-2">
           <div className="w-8 text-center">#</div>
-          <div className="flex-1">Title</div>
-          <div className="w-24 text-right pr-4">Streams</div>
+          <div className="flex-1">Title & Stats</div>
         </div>
 
-        {albumSongs.length === 0 ? (
+        {songs.length === 0 ? (
           <div className="text-center py-10 text-gray-500 dark:text-gray-400">
             No songs found in this album.
           </div>
         ) : (
-          albumSongs.map((song, index) => (
+          songs.map((song, index) => (
             <div key={song.id} className="flex items-center gap-4 group">
               <div className="w-8 text-center text-sm font-medium text-gray-400 dark:text-gray-500">
                 {index + 1}
@@ -162,8 +206,8 @@ export default function AlbumDetailsPage() {
               <div className="flex-1">
                 <SongCard
                   song={song}
-                  artistName={artist?.name || "Unknown Artist"}
-                  contextSongs={albumSongs}
+                  artistName={song.artistName}
+                  contextSongs={songs}
                 />
               </div>
             </div>

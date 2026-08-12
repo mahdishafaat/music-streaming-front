@@ -28,3 +28,32 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* src/app/globals.css */
+
+/* مخفی کردن اسکرول‌بارهای کل سایت در عین حفظ قابلیت اسکرول */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* حل مشکل کانتراست پایین و خوانایی متن‌ها در تمام اینپوت‌های سایت (حالت لایت) */
+@media (prefers-color-scheme: light) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="url"],
+  textarea,
+  select {
+    color: #111827 !important; /* متن کاملاً تیره */
+    border-color: #d1d5db !important; /* حاشیه مشخص‌تر */
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: #6b7280 !important; /* پلیس‌هولدر خوانا */
+  }
+}
