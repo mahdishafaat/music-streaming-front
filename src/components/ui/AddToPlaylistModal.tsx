@@ -2,9 +2,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getStorageItem, setStorageItem } from "@/utils/storage";
-import { Playlist, Song } from "@/types";
 import Image from "next/image";
+import { Song } from "@/types";
+
+interface Playlist {
+  id: string | number;
+  name: string;
+}
 
 interface AddToPlaylistModalProps {
   isOpen: boolean;
@@ -18,34 +22,75 @@ export default function AddToPlaylistModal({
   song,
 }: AddToPlaylistModalProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // واکشی پلی‌لیست‌های کاربر از بک‌اند
   useEffect(() => {
-    // پیچیدن منطق در یک تابع برای جلوگیری از رندر آبشاری
-    const loadPlaylists = async () => {
-      if (isOpen) {
-        const storedPlaylists = getStorageItem<Playlist[]>("playlists") || [];
-        setPlaylists(storedPlaylists);
-      }
-    };
+    if (isOpen) {
+      const fetchPlaylists = async () => {
+        setIsLoading(true);
+        try {
+          const token = localStorage.getItem("access_token");
+          if (!token) {
+            setIsLoading(false);
+            return;
+          }
 
-    loadPlaylists();
+          const res = await fetch("http://127.0.0.1:8000/music/my-playlists/", {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setPlaylists(data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch playlists:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchPlaylists();
+    }
   }, [isOpen]);
 
   if (!isOpen || !song) return null;
 
-  const handleAddToPlaylist = (playlistId: string) => {
-    const allPlaylists = getStorageItem<Playlist[]>("playlists") || [];
-    const updatedPlaylists = allPlaylists.map((p) => {
-      if (p.id === playlistId) {
-        if (!p.songIds?.includes(song.id)) {
-          return { ...p, songIds: [...(p.songIds || []), song.id] };
-        }
-      }
-      return p;
-    });
+  // اضافه کردن آهنگ به پلی‌لیست
+  const handleAddToPlaylist = async (playlistId: string | number) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      alert("Please login first.");
+      return;
+    }
 
-    setStorageItem("playlists", updatedPlaylists);
-    onClose();
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/music/playlists/${playlistId}/add-music/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ music_id: parseInt(song.id) }),
+        },
+      );
+
+      if (res.ok) {
+        onClose(); // بستن موفقیت‌آمیز مودال
+      } else {
+        const errorData = await res.json();
+        alert(
+          errorData.detail ||
+            "Failed to add music to playlist. It might already be there.",
+        );
+      }
+    } catch (error) {
+      console.error("Error adding to playlist:", error);
+    }
   };
 
   return (
@@ -101,54 +146,39 @@ export default function AddToPlaylistModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1">
-          {playlists.length === 0 ? (
-            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
-              {/* استفاده از &apos; به جای سینگل‌کوتیشن */}
+        <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pr-1">
+          {isLoading ? (
+            <div className="text-center py-6 text-sm font-bold text-gray-500 dark:text-gray-400">
+              Loading playlists...
+            </div>
+          ) : playlists.length === 0 ? (
+            <div className="text-center py-6 text-sm font-bold text-gray-500 dark:text-gray-400">
               You don&apos;t have any playlists yet.
             </div>
           ) : (
             playlists.map((playlist) => {
-              const isAlreadyAdded = playlist.songIds?.includes(song.id);
               return (
                 <button
                   key={playlist.id}
-                  onClick={() =>
-                    !isAlreadyAdded && handleAddToPlaylist(playlist.id)
-                  }
-                  disabled={isAlreadyAdded}
-                  className={`flex items-center justify-between p-3 rounded-xl text-left transition-colors ${
-                    isAlreadyAdded
-                      ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800"
-                      : "hover:bg-green-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700"
-                  }`}
+                  onClick={() => handleAddToPlaylist(playlist.id)}
+                  className="flex items-center justify-between p-3 rounded-xl text-left transition-colors hover:bg-green-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 group"
                 >
-                  <span className="font-medium text-gray-900 dark:text-white truncate pr-4">
-                    {playlist.title}
+                  <span className="font-bold text-gray-900 dark:text-white truncate pr-4">
+                    {playlist.name}
                   </span>
-                  {isAlreadyAdded ? (
-                    <svg
-                      className="w-5 h-5 text-green-500 flex-shrink-0"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-5 h-5 text-gray-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 4v16m8-8H4"
-                      ></path>
-                    </svg>
-                  )}
+                  <svg
+                    className="w-5 h-5 text-gray-400 group-hover:text-green-500 flex-shrink-0 transition-colors"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4v16m8-8H4"
+                    ></path>
+                  </svg>
                 </button>
               );
             })

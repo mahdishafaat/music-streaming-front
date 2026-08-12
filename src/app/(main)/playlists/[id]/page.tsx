@@ -3,55 +3,120 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getStorageItem } from "@/utils/storage";
-import { Playlist, Song, User } from "@/types";
+import { Playlist, Song } from "@/types";
 import SongCard from "@/components/ui/SongCard";
 import { usePlayer } from "@/context/PlayerContext";
 import Image from "next/image";
+
+interface ApiArtist {
+  id: number;
+  stage_name: string;
+}
+
+interface ApiMusic {
+  id: number;
+  title: string;
+  cover?: string | null;
+  audio_file: string;
+  lyrics?: string;
+  artists?: ApiArtist[];
+  streams_count: number;
+  likes_count: number;
+  is_liked: boolean;
+}
+
+interface ApiPlaylistDetail {
+  id: number;
+  name: string;
+  cover?: string | null;
+  created_at: string;
+  musics: ApiMusic[];
+}
+
+interface DisplaySong extends Song {
+  artistName: string;
+}
 
 export default function PlaylistDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const playlistId = params.id as string;
 
-  // توابع و استیت‌های پلیر رو وارد می‌کنیم تا دکمه آپدیت بشه
   const { playSong, isPlaying, currentSong, togglePlay } = usePlayer();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
-  const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
-  const [artists, setArtists] = useState<User[]>([]);
+  const [playlistSongs, setPlaylistSongs] = useState<DisplaySong[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getFullUrl = (path?: string | null): string => {
+    if (!path) return "/default-cover.png";
+    if (path.startsWith("http")) return path;
+    return `http://127.0.0.1:8000${path}`;
+  };
 
   useEffect(() => {
     const fetchPlaylistData = async () => {
-      const allPlaylists = getStorageItem<Playlist[]>("playlists") || [];
-      const allSongs = getStorageItem<Song[]>("songs") || [];
-      const allArtists = getStorageItem<User[]>("artists") || [];
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
 
-      const foundPlaylist = allPlaylists.find((p) => p.id === playlistId);
-
-      if (foundPlaylist) {
-        setPlaylist(foundPlaylist);
-
-        const filteredSongs = allSongs.filter((song) =>
-          foundPlaylist.songIds?.includes(song.id),
+        const res = await fetch(
+          `http://127.0.0.1:8000/music/playlists/${playlistId}/`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          },
         );
-        setPlaylistSongs(filteredSongs);
-        setArtists(allArtists);
-      }
 
-      setIsLoading(false);
+        if (res.ok) {
+          const data: ApiPlaylistDetail = await res.json();
+
+          // چک امنیتی URL عکس برای جلوگیری از باگ Invalid URL
+          const finalCoverUrl = data.cover
+            ? data.cover.startsWith("http")
+              ? data.cover
+              : `http://127.0.0.1:8000${data.cover}`
+            : undefined;
+
+          setPlaylist({
+            id: data.id.toString(),
+            title: data.name,
+            songIds: data.musics.map((m) => m.id.toString()),
+            userId: "me",
+            createdAt: data.created_at || new Date().toISOString(),
+            coverImage: finalCoverUrl,
+          });
+
+          const mappedSongs: DisplaySong[] = data.musics.map((m) => ({
+            id: m.id.toString(),
+            title: m.title,
+            artistId: m.artists?.[0]?.id?.toString() || "unknown",
+            artistName: m.artists?.[0]?.stage_name || "Unknown Artist",
+            albumId: "",
+            coverImage: getFullUrl(m.cover),
+            audioUrl: getFullUrl(m.audio_file),
+            streamsCount: m.streams_count || 0,
+            likesCount: m.likes_count || 0,
+            isLiked: m.is_liked || false,
+            listenersCount: 0,
+            lyrics: m.lyrics || "",
+          }));
+
+          setPlaylistSongs(mappedSongs);
+        }
+      } catch (error) {
+        console.error("Failed to fetch playlist details:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchPlaylistData();
+    if (playlistId) fetchPlaylistData();
   }, [playlistId]);
 
-  const getArtistName = (artistId: string) => {
-    const artist = artists.find((a) => a.id === artistId);
-    return artist ? artist.displayName : "Unknown Artist";
-  };
-
-  // بررسی می‌کنیم آیا یکی از آهنگ‌های این پلی‌لیست در حال پخش هست یا نه
   const isCurrentSongInPlaylist = playlistSongs.some(
     (song) => song.id === currentSong?.id,
   );
@@ -59,22 +124,18 @@ export default function PlaylistDetailsPage() {
 
   const handlePlayPlaylist = () => {
     if (playlistSongs.length === 0) return;
-
     if (isThisPlaylistPlaying) {
-      // اگر در حال پخش بود، متوقفش کن
       togglePlay();
     } else if (isCurrentSongInPlaylist && !isPlaying) {
-      // اگر آهنگِ همین پلی‌لیست متوقف شده بود، ادامه‌اش رو پخش کن
       togglePlay();
     } else {
-      // در غیر این صورت، از اولین آهنگ پلی‌لیست شروع به پخش کن
       playSong(playlistSongs[0], playlistSongs);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64 text-gray-500 dark:text-gray-400">
+      <div className="flex justify-center items-center h-64 font-bold text-gray-500 dark:text-gray-400">
         Loading playlist...
       </div>
     );
@@ -88,7 +149,7 @@ export default function PlaylistDetailsPage() {
         </h2>
         <button
           onClick={() => router.back()}
-          className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+          className="px-4 py-2 bg-green-600 font-bold text-white rounded-xl hover:bg-green-700 transition-colors"
         >
           Go Back
         </button>
@@ -96,18 +157,22 @@ export default function PlaylistDetailsPage() {
     );
   }
 
+  const playlistCover =
+    playlist.coverImage ||
+    (playlistSongs.length > 0 ? playlistSongs[0].coverImage : null);
+
   return (
-    <div className="flex flex-col gap-8 pb-10 transition-colors">
-      {/* هدر پلی‌لیست */}
+    <div className="flex flex-col gap-8 pb-10 transition-colors animate-fade-in max-w-5xl mx-auto w-full">
       <div className="flex flex-col md:flex-row items-end gap-6 pb-6 border-b border-gray-200 dark:border-gray-700">
         <div className="relative w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-          {playlist.coverImage ? (
+          {playlistCover ? (
             <Image
-              src={playlist.coverImage}
+              src={playlistCover}
               alt={playlist.title}
               fill
               className="object-cover"
               unoptimized
+              priority
             />
           ) : (
             <svg
@@ -127,7 +192,6 @@ export default function PlaylistDetailsPage() {
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white truncate">
             {playlist.title}
           </h1>
-
           <div className="flex items-center gap-2 mt-2">
             <span className="font-bold text-gray-900 dark:text-white">
               My Playlist
@@ -139,14 +203,12 @@ export default function PlaylistDetailsPage() {
         </div>
       </div>
 
-      {/* دکمه‌های کنترل */}
       <div className="flex items-center gap-4">
         <button
           onClick={handlePlayPlaylist}
           disabled={playlistSongs.length === 0}
           className="w-14 h-14 flex items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-500 hover:scale-105 transition-all shadow-lg shadow-green-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {/* حالا با توجه به وضعیت پخش، آیکون به درستی تغییر می‌کند */}
           {isThisPlaylistPlaying ? (
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
@@ -163,7 +225,6 @@ export default function PlaylistDetailsPage() {
         </button>
       </div>
 
-      {/* لیست آهنگ‌های پلی‌لیست */}
       <div className="flex flex-col gap-2 mt-4">
         {playlistSongs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
@@ -197,7 +258,7 @@ export default function PlaylistDetailsPage() {
               <div className="flex-1">
                 <SongCard
                   song={song}
-                  artistName={getArtistName(song.artistId)}
+                  artistName={song.artistName}
                   contextSongs={playlistSongs}
                 />
               </div>

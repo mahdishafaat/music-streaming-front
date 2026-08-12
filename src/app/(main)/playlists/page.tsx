@@ -2,34 +2,75 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getStorageItem } from "@/utils/storage";
 import { Playlist } from "@/types";
 import PlaylistCard from "@/components/ui/PlaylistCard";
 import CreatePlaylistModal from "@/components/ui/CreatePlaylistModal";
 
+interface ApiPlaylist {
+  id: number;
+  name: string;
+  cover?: string | null;
+  songs_count: number;
+  created_at: string;
+}
+
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false); // استیت کنترل مُدال
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchPlaylists = async () => {
-      const storedPlaylists = getStorageItem<Playlist[]>("playlists") || [];
-      setPlaylists(storedPlaylists);
-      setIsLoading(false);
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await fetch("http://127.0.0.1:8000/music/my-playlists/", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+
+        if (res.ok) {
+          const data: ApiPlaylist[] = await res.json();
+          const mappedPlaylists: Playlist[] = data.map((p) => {
+            // چک امنیتی URL عکس
+            const finalCoverUrl = p.cover
+              ? p.cover.startsWith("http")
+                ? p.cover
+                : `http://127.0.0.1:8000${p.cover}`
+              : undefined;
+
+            return {
+              id: p.id.toString(),
+              title: p.name,
+              songIds: new Array(p.songs_count || 0).fill("song"),
+              userId: "me",
+              createdAt: p.created_at || new Date().toISOString(),
+              coverImage: finalCoverUrl,
+            };
+          });
+          setPlaylists(mappedPlaylists);
+        }
+      } catch (error) {
+        console.error("Failed to fetch playlists:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchPlaylists();
   }, []);
 
-  // این تابع وقتی مُدال موفق به ساخت پلی‌لیست می‌شه فراخوانی می‌شه
   const handlePlaylistCreated = (newPlaylist: Playlist) => {
-    setPlaylists((prev) => [...prev, newPlaylist]);
+    setPlaylists((prev) => [newPlaylist, ...prev]);
     setIsModalOpen(false);
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-10 transition-colors">
+    <div className="flex flex-col gap-8 pb-10 transition-colors animate-fade-in">
       <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Your Playlists
@@ -37,13 +78,13 @@ export default function PlaylistsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-10 text-gray-500 dark:text-gray-400">
+        <div className="flex justify-center py-10 font-bold text-gray-500 dark:text-gray-400">
           Loading...
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           <div
-            onClick={() => setIsModalOpen(true)} // باز کردن مُدال
+            onClick={() => setIsModalOpen(true)}
             className="group flex flex-col gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-green-50 dark:hover:bg-gray-800 transition-colors cursor-pointer justify-center items-center text-center aspect-square"
           >
             <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-sm">
@@ -75,7 +116,6 @@ export default function PlaylistsPage() {
         </div>
       )}
 
-      {/* اضافه کردن کامپوننت مُدال در انتهای صفحه */}
       <CreatePlaylistModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
