@@ -50,9 +50,7 @@ export default function SettingsPage() {
   }
 
   const handleUpgradeSubscription = () => {
-    alert(
-      "هدایت به صفحه پرداخت...\n(این قابلیت در فاز دوم پروژه پیاده‌سازی خواهد شد)",
-    );
+    router.push("/subscriptions");
   };
 
   const handleDeleteAccount = () => {
