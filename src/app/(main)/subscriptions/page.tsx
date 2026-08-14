@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 // ---------- Types ----------
 interface Plan {
@@ -27,7 +26,6 @@ interface Price {
 
 // ---------- Component ----------
 export default function SubscriptionsPage() {
-  const router = useRouter();
   const [prices, setPrices] = useState<Price[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,32 +112,6 @@ export default function SubscriptionsPage() {
       alert(err instanceof Error ? err.message : "Something went wrong while creating payment");
     }
   };
-
-// const handleSelectPrice = async (priceId: number) => {
-//   try {
-//     const res = await fetch("http://127.0.0.1:8000/subscriptions/payments/create", {
-//       method: "POST",
-//       headers: getHeaders(),
-//       body: JSON.stringify({
-//         price_id: priceId, // change the key if your backend expects a different name
-//         }),
-//     });
-
-//     if (!res.ok) {
-//       const errorData = await res.json().catch(() => ({}));
-//       throw new Error(errorData.detail || "Failed to create payment");
-//     }
-
-//     const data = await res.json();
-//     // data = { payment_id, authority, payment_url }
-
-//     // Redirect user to Zarinpal payment page
-//     window.location.href = data.payment_url;
-//   } catch (err) {
-//     console.error(err);
-//     alert(err instanceof Error ? err.message : "Something went wrong while creating payment");
-//   }
-// };
 
   // ---------- UI ----------
   if (loading) {
