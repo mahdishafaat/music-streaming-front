@@ -11,6 +11,7 @@ const baseNavItems = [
   { name: "Albums & Singles", path: "/albums" },
   { name: "Profile", path: "/profile" },
   { name: "Settings", path: "/settings" },
+  { name: "Tickets", path: "/tickets" },
 ];
 
 export default function Sidebar() {

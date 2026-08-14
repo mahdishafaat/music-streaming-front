@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 type Tab = "artists" | "tickets" | "audit" | "system";
 
-// تطابق تایپ با ArtistRequestListSerializer در بک‌اند
+// ========== ARTIST REQUEST TYPES ==========
 type RealArtistRequest = {
   id: number;
   user_email: string;
@@ -19,13 +19,33 @@ type RealArtistRequest = {
   created_at: string;
 };
 
-type Ticket = {
-  id: string;
-  userName: string;
+// ========== TICKET TYPES (matching backend) ==========
+type ApiTicket = {
+  id: number;
+  user: {
+    id: number;
+    email: string;
+    display_name: string;
+  };
   subject: string;
-  date: string;
-  status: "OPEN" | "ANSWERED" | "CLOSED";
+  status: "open" | "in_progress" | "resolved" | "closed";
+  created_at: string;
+  updated_at: string;
 };
+
+type ApiMessage = {
+  id: number;
+  ticket: number;
+  sender: {
+    id: number;
+    email: string;
+    display_name: string;
+  };
+  message: string;
+  created_at: string;
+};
+
+// ========== OLD LEGACY TYPES (kept for audit & system) ==========
 type Audit = {
   artistId: string;
   name: string;
@@ -40,27 +60,21 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("artists");
 
-  // استیت واقعی درخواست‌های هنرمندان متصل به بک‌اند
+  // ---- Artist requests ----
   const [artistRequests, setArtistRequests] = useState<RealArtistRequest[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
-  const [tickets] = useState<Ticket[]>([
-    {
-      id: "TCK-101",
-      userName: "john_doe",
-      subject: "Subscription payment issue",
-      date: "2023-10-25",
-      status: "OPEN",
-    },
-    {
-      id: "TCK-102",
-      userName: "sara_smith",
-      subject: "My song is not playing",
-      date: "2023-10-24",
-      status: "ANSWERED",
-    },
-  ]);
+  // ---- Tickets ----
+  const [tickets, setTickets] = useState<ApiTicket[]>([]);
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
+  const [ticketError, setTicketError] = useState<string | null>(null);
 
+  const [activeTicket, setActiveTicket] = useState<ApiTicket | null>(null);
+  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [replyText, setReplyText] = useState("");
+
+  // ---- Audit & System (mock) ----
   const [audits, setAudits] = useState<Audit[]>([
     {
       artistId: "art_1",
@@ -82,9 +96,10 @@ export default function DashboardPage() {
 
   const [silverPrice, setSilverPrice] = useState(4.99);
   const [goldPrice, setGoldPrice] = useState(9.99);
-  const [activeTicketChat, setActiveTicketChat] = useState<Ticket | null>(null);
 
-  // واکشی داده‌های واقعی درخواست‌های هنرمندان از بک‌اند
+  // ========== API CALLS ==========
+
+  // Fetch artist requests (unchanged)
   const fetchArtistRequests = async () => {
     setIsLoadingRequests(true);
     try {
@@ -93,7 +108,7 @@ export default function DashboardPage() {
         "http://127.0.0.1:8000/accounts/artist-requests/",
         {
           headers: { Authorization: `Bearer ${token}` },
-        },
+        }
       );
       if (res.ok) {
         const data = await res.json();
@@ -105,29 +120,101 @@ export default function DashboardPage() {
       setIsLoadingRequests(false);
     }
   };
+  const sendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeTicket) return;
+    if (!replyText.trim()) return;
 
-  useEffect(() => {
-    const runEffect = async () => {
-      await Promise.resolve(); // جلوگیری از اخطار Cascading Render
-
-      if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
-        if (activeTab === "artists") {
-          fetchArtistRequests();
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `http://127.0.0.1:8000/ticket/tickets/${activeTicket.id}/messages/create/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ message: replyText.trim() }),
         }
-      } else if (user) {
-        router.push("/");
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to send reply");
       }
-    };
 
-    runEffect();
-  }, [user, router, activeTab]);
+      const newMsg = await res.json();
+      setMessages((prev) => [...prev, newMsg]);   // add to chat
+      setReplyText("");
 
-  if (!user) return <div className="p-10 text-center">Loading...</div>;
-  if (user.role !== "ADMIN" && user.role !== "SUPPORT") return null;
+      // Refresh ticket list to reflect any status change (e.g., -> IN_PROGRESS)
+      await fetchTickets();
 
-  const isAdmin = user.role === "ADMIN";
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Network error");
+    }
+  };
 
-  // ارسال درخواست PATCH به بک‌اند برای تایید
+  // Fetch tickets from the first endpoint
+  const fetchTickets = async () => {
+    setIsLoadingTickets(true);
+    setTicketError(null);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("http://127.0.0.1:8000/ticket/tickets/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch tickets: ${res.status}`);
+      }
+      const data = await res.json();
+      setTickets(data);
+    } catch (error) {
+      setTicketError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  };
+
+  // Fetch messages for a specific ticket (second endpoint)
+  const fetchMessages = async (ticketId: number) => {
+    setIsLoadingMessages(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `http://127.0.0.1:8000/ticket/tickets/${ticketId}/messages/`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`Failed to fetch messages: ${res.status}`);
+      }
+      const data = await res.json();
+      setMessages(data);
+    } catch (error) {
+      console.error("Error loading messages", error);
+      alert("Could not load messages for this ticket.");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
+  // Handle clicking a ticket row
+  const handleTicketClick = (ticket: ApiTicket) => {
+    setActiveTicket(ticket);
+    fetchMessages(ticket.id);
+  };
+
+  // Go back to ticket list
+  const handleBackToTickets = () => {
+    setActiveTicket(null);
+    setMessages([]);
+    setReplyText("");
+  };
+
+  // ========== ARTIST ACTIONS ==========
   const handleApproveArtist = async (id: number) => {
     try {
       const token = localStorage.getItem("access_token");
@@ -140,13 +227,13 @@ export default function DashboardPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ status: "approved" }),
-        },
+        }
       );
       if (res.ok) {
         alert(
-          "Artist approved successfully. Backend created Artist profile automatically!",
+          "Artist approved successfully. Backend created Artist profile automatically!"
         );
-        fetchArtistRequests(); // رفرش لیست
+        fetchArtistRequests();
       } else {
         alert("Failed to approve artist.");
       }
@@ -156,7 +243,6 @@ export default function DashboardPage() {
     }
   };
 
-  // ارسال درخواست PATCH به بک‌اند برای رد کردن (به همراه دلیل)
   const handleRejectArtist = async (id: number) => {
     const reason = prompt("Please enter the reason for rejection:");
     if (reason !== null) {
@@ -171,11 +257,11 @@ export default function DashboardPage() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ status: "rejected", reason }),
-          },
+          }
         );
         if (res.ok) {
           alert(`Request rejected. Reason: ${reason}`);
-          fetchArtistRequests(); // رفرش لیست
+          fetchArtistRequests();
         }
       } catch (error) {
         console.error(error);
@@ -187,8 +273,8 @@ export default function DashboardPage() {
   const handleSettlePayment = (artistId: string) => {
     setAudits((prev) =>
       prev.map((audit) =>
-        audit.artistId === artistId ? { ...audit, status: "SETTLED" } : audit,
-      ),
+        audit.artistId === artistId ? { ...audit, status: "SETTLED" } : audit
+      )
     );
     alert("Settlement approved successfully.");
   };
@@ -197,6 +283,39 @@ export default function DashboardPage() {
     e.preventDefault();
     alert(`Prices updated:\nSilver: $${silverPrice}\nGold: $${goldPrice}`);
   };
+
+  // ========== useEffect ==========
+  useEffect(() => {
+    const runEffect = async () => {
+      if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
+        if (activeTab === "artists") {
+          fetchArtistRequests();
+        } else if (activeTab === "tickets") {
+          await fetchTickets();
+        }
+      } else if (user) {
+        router.push("/");
+      }
+    };
+
+    runEffect();
+  }, [user, router, activeTab]);
+
+  // ========== RENDER HELPERS ==========
+  if (!user) return <div className="p-10 text-center">Loading...</div>;
+  if (user.role !== "ADMIN" && user.role !== "SUPPORT") return null;
+
+  const isAdmin = user.role === "ADMIN";
+
+  // ========== STATUS MAPPING ==========
+  const statusMap = {
+    open: { label: "Open", className: "bg-red-100 text-red-700" },
+    in_progress: { label: "In Progress", className: "bg-yellow-100 text-yellow-700" },
+    resolved: { label: "Resolved", className: "bg-blue-100 text-blue-700" },
+    closed: { label: "Closed", className: "bg-gray-100 text-gray-700" },
+  };
+
+  // ========== TAB RENDERERS ==========
 
   const renderArtistsTab = () => (
     <div className="animate-fade-in">
@@ -248,8 +367,8 @@ export default function DashboardPage() {
                           req.status === "pending"
                             ? "bg-yellow-100 text-yellow-700"
                             : req.status === "approved"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
                         }`}
                       >
                         {req.status}
@@ -294,112 +413,142 @@ export default function DashboardPage() {
       <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
         Support Tickets
       </h2>
-      {activeTicketChat ? (
+
+      {activeTicket ? (
+        // ----- TICKET CHAT VIEW -----
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-[600px] shadow-sm">
           <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
             <div>
               <h3 className="font-bold text-gray-900 dark:text-white text-lg">
-                Ticket: {activeTicketChat.id}
+                Ticket #{activeTicket.id}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
                 User:{" "}
                 <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {activeTicketChat.userName}
+                  {activeTicket.user.display_name}
                 </span>{" "}
                 | Subject:{" "}
                 <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {activeTicketChat.subject}
+                  {activeTicket.subject}
                 </span>
               </p>
             </div>
             <button
-              onClick={() => setActiveTicketChat(null)}
+              onClick={handleBackToTickets}
               className="px-5 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl text-sm font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               Go Back
             </button>
           </div>
+
           <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-6">
-            <div className="self-start max-w-[80%] bg-gray-100 dark:bg-gray-700 p-5 rounded-2xl rounded-tl-none">
-              <p className="text-base text-gray-800 dark:text-gray-200 leading-relaxed">
-                Hi, I bought a GOLD subscription but it is not active yet.
-                Please help.
-              </p>
-              <span className="text-xs text-gray-400 mt-3 block font-medium">
-                10:30 AM
-              </span>
-            </div>
-            {activeTicketChat.status === "ANSWERED" && (
-              <div className="self-end max-w-[80%] bg-green-50 dark:bg-green-900/40 border border-green-100 dark:border-green-800 text-green-900 dark:text-green-100 p-5 rounded-2xl rounded-tr-none">
-                <p className="text-base leading-relaxed">
-                  Hello. There was a payment gateway issue. Your account has
-                  been activated manually.
-                </p>
-                <span className="text-xs opacity-70 mt-3 block font-medium">
-                  11:15 AM
-                </span>
-              </div>
+            {isLoadingMessages ? (
+              <p className="text-center text-gray-500">Loading messages...</p>
+            ) : messages.length === 0 ? (
+              <p className="text-center text-gray-500">No messages yet.</p>
+            ) : (
+              messages.map((msg) => {
+                // const isSender = msg.sender.id === user?.id;
+                const isSender = String(msg.sender.id) === String(user?.id);
+                return (
+                  <div
+                    key={msg.id}
+                    className={`max-w-[80%] p-5 rounded-2xl ${
+                      isSender
+                        ? "self-end bg-green-50 dark:bg-green-900/40 border border-green-100 dark:border-green-800 text-green-900 dark:text-green-100 rounded-tr-none"
+                        : "self-start bg-gray-100 dark:bg-gray-700 rounded-tl-none"
+                    }`}
+                  >
+                    <p className="text-base leading-relaxed">{msg.message}</p>
+                    <span className="text-xs opacity-70 mt-3 block font-medium">
+                      {new Date(msg.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
+
           <div className="p-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
-            <div className="flex gap-3">
+            <form onSubmit={sendReply} className="flex gap-3">
               <input
                 type="text"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Type your reply here..."
                 className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
+                disabled={activeTicket?.status === "closed"}
               />
-              <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-sm">
+              <button
+                type="submit"
+                disabled={activeTicket?.status === "closed" || !replyText.trim()}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-sm"
+              >
                 Send
               </button>
-            </div>
+            </form>
           </div>
         </div>
       ) : (
+        // ----- TICKET LIST VIEW -----
         <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-                <th className="p-5 font-medium">Ticket ID</th>
-                <th className="p-5 font-medium">User</th>
-                <th className="p-5 font-medium">Subject</th>
-                <th className="p-5 font-medium">Date</th>
-                <th className="p-5 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.map((tck) => (
-                <tr
-                  key={tck.id}
-                  onClick={() => setActiveTicketChat(tck)}
-                  className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer group"
-                >
-                  <td className="p-5 font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors">
-                    {tck.id}
-                  </td>
-                  <td className="p-5 text-gray-600 dark:text-gray-300">
-                    {tck.userName}
-                  </td>
-                  <td className="p-5 text-gray-600 dark:text-gray-300 truncate max-w-[300px]">
-                    {tck.subject}
-                  </td>
-                  <td className="p-5 text-gray-500 text-sm">{tck.date}</td>
-                  <td className="p-5">
-                    <span
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${
-                        tck.status === "OPEN"
-                          ? "bg-red-100 text-red-700"
-                          : tck.status === "ANSWERED"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-gray-100 text-gray-700"
-                      }`}
-                    >
-                      {tck.status}
-                    </span>
-                  </td>
+          {isLoadingTickets ? (
+            <div className="p-8 text-center text-gray-500">Loading tickets...</div>
+          ) : ticketError ? (
+            <div className="p-8 text-center text-red-500">Error: {ticketError}</div>
+          ) : (
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
+                  <th className="p-5 font-medium">Ticket ID</th>
+                  <th className="p-5 font-medium">User</th>
+                  <th className="p-5 font-medium">Subject</th>
+                  <th className="p-5 font-medium">Date</th>
+                  <th className="p-5 font-medium">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-gray-500">
+                      No tickets found.
+                    </td>
+                  </tr>
+                ) : (
+                  tickets.map((tck) => {
+                    const statusInfo = statusMap[tck.status] || statusMap.closed;
+                    return (
+                      <tr
+                        key={tck.id}
+                        onClick={() => handleTicketClick(tck)}
+                        className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer group"
+                      >
+                        <td className="p-5 font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors">
+                          #{tck.id}
+                        </td>
+                        <td className="p-5 text-gray-600 dark:text-gray-300">
+                          {tck.user.display_name}
+                        </td>
+                        <td className="p-5 text-gray-600 dark:text-gray-300 truncate max-w-[300px]">
+                          {tck.subject}
+                        </td>
+                        <td className="p-5 text-gray-500 text-sm">
+                          {new Date(tck.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="p-5">
+                          <span
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${statusInfo.className}`}
+                          >
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>
@@ -583,6 +732,7 @@ export default function DashboardPage() {
     </div>
   );
 
+  // ========== MAIN LAYOUT ==========
   return (
     <div className="flex flex-col md:flex-row min-h-[80vh] gap-10 transition-colors max-w-7xl mx-auto w-full pb-12">
       <aside className="w-full md:w-72 flex-shrink-0 flex flex-col gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-3xl h-fit sticky top-6 shadow-sm">
@@ -600,7 +750,11 @@ export default function DashboardPage() {
 
         <button
           onClick={() => setActiveTab("artists")}
-          className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${activeTab === "artists" ? "bg-green-600 text-white shadow-md shadow-green-600/20" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+          className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${
+            activeTab === "artists"
+              ? "bg-green-600 text-white shadow-md shadow-green-600/20"
+              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
         >
           <svg
             className="w-5 h-5"
@@ -620,7 +774,11 @@ export default function DashboardPage() {
 
         <button
           onClick={() => setActiveTab("tickets")}
-          className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${activeTab === "tickets" ? "bg-green-600 text-white shadow-md shadow-green-600/20" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+          className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${
+            activeTab === "tickets"
+              ? "bg-green-600 text-white shadow-md shadow-green-600/20"
+              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
         >
           <svg
             className="w-5 h-5"
@@ -644,7 +802,11 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setActiveTab("audit")}
-              className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${activeTab === "audit" ? "bg-green-600 text-white shadow-md shadow-green-600/20" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+              className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${
+                activeTab === "audit"
+                  ? "bg-green-600 text-white shadow-md shadow-green-600/20"
+                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              }`}
             >
               <svg
                 className="w-5 h-5"
@@ -664,7 +826,11 @@ export default function DashboardPage() {
 
             <button
               onClick={() => setActiveTab("system")}
-              className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${activeTab === "system" ? "bg-green-600 text-white shadow-md shadow-green-600/20" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+              className={`flex items-center gap-4 w-full text-left px-5 py-3.5 rounded-xl font-bold transition-all ${
+                activeTab === "system"
+                  ? "bg-green-600 text-white shadow-md shadow-green-600/20"
+                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              }`}
             >
               <svg
                 className="w-5 h-5"
