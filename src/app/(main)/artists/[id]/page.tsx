@@ -86,7 +86,9 @@ export default function ArtistProfilePage() {
   const [statsLoading, setStatsLoading] = useState(false);
 
   // Subscription
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null,
+  );
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   // ---- Helper functions ----
@@ -108,7 +110,7 @@ export default function ArtistProfilePage() {
     try {
       const res = await fetch(
         `http://127.0.0.1:8000/accounts/users/${userId}/follow-stats/`,
-        { headers: getHeaders() }
+        { headers: getHeaders() },
       );
       if (res.ok) {
         const data = await res.json();
@@ -125,7 +127,7 @@ export default function ArtistProfilePage() {
     try {
       const res = await fetch(
         `http://127.0.0.1:8000/accounts/me/follows/${userId}/`,
-        { headers: getHeaders() }
+        { headers: getHeaders() },
       );
       if (res.ok) {
         const data = await res.json();
@@ -140,10 +142,13 @@ export default function ArtistProfilePage() {
   useEffect(() => {
     const fetchArtistData = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/accounts/artists/${id}/`, {
-          headers: getHeaders(),
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `http://127.0.0.1:8000/accounts/artists/${id}/`,
+          {
+            headers: getHeaders(),
+            cache: "no-store",
+          },
+        );
         if (!res.ok) throw new Error("Failed to fetch artist");
         const data: ApiArtistDetail = await res.json();
         setArtist(data);
@@ -197,9 +202,12 @@ export default function ArtistProfilePage() {
       if (!user) return;
       setSubscriptionLoading(true);
       try {
-        const subRes = await fetch("http://127.0.0.1:8000/subscriptions/me/subscription/", {
-          headers: getHeaders(),
-        });
+        const subRes = await fetch(
+          "http://127.0.0.1:8000/subscriptions/me/subscription/",
+          {
+            headers: getHeaders(),
+          },
+        );
         if (subRes.ok) {
           const subData = await subRes.json();
           setSubscription(subData);
@@ -208,7 +216,7 @@ export default function ArtistProfilePage() {
             setStatsLoading(true);
             const statsRes = await fetch(
               `http://127.0.0.1:8000/music/artists/${id}/statistics/`,
-              { headers: getHeaders() }
+              { headers: getHeaders() },
             );
             if (statsRes.ok) {
               const statsData = await statsRes.json();
@@ -246,7 +254,7 @@ export default function ArtistProfilePage() {
           {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },
-          }
+          },
         );
         if (res.ok) {
           setIsFollowing(false);
@@ -293,7 +301,9 @@ export default function ArtistProfilePage() {
     );
   }
 
-  const profileImage = artist.profile_image ? getFullUrl(artist.profile_image) : null;
+  const profileImage = artist.profile_image
+    ? getFullUrl(artist.profile_image)
+    : null;
   const canViewStats = subscription?.plan?.can_view_statistics ?? false;
 
   return (
@@ -320,10 +330,16 @@ export default function ArtistProfilePage() {
           <div className="flex flex-col gap-3">
             {artist.is_verified && (
               <div className="flex items-center gap-1.5 text-blue-400 bg-blue-500/10 backdrop-blur-md px-3 py-1 rounded-full w-fit">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
-                <span className="text-sm font-bold tracking-wide">Verified Artist</span>
+                <span className="text-sm font-bold tracking-wide">
+                  Verified Artist
+                </span>
               </div>
             )}
             <h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg tracking-tight">
@@ -335,13 +351,17 @@ export default function ArtistProfilePage() {
             <div className="flex gap-6 text-sm text-gray-300">
               <span>
                 <span className="font-bold text-white">
-                  {followersCount !== null ? followersCount.toLocaleString() : "—"}
+                  {followersCount !== null
+                    ? followersCount.toLocaleString()
+                    : "—"}
                 </span>{" "}
                 Followers
               </span>
               <span>
                 <span className="font-bold text-white">
-                  {followingCount !== null ? followingCount.toLocaleString() : "—"}
+                  {followingCount !== null
+                    ? followingCount.toLocaleString()
+                    : "—"}
                 </span>{" "}
                 Following
               </span>
@@ -353,7 +373,11 @@ export default function ArtistProfilePage() {
               disabled={singles.length === 0}
               className="w-14 h-14 bg-green-500 hover:bg-green-400 hover:scale-105 text-white rounded-full flex items-center justify-center shadow-xl transition-all disabled:opacity-50"
             >
-              <svg className="w-6 h-6 ml-1 text-black" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 ml-1 text-black"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
@@ -425,7 +449,9 @@ export default function ArtistProfilePage() {
               <div className="text-center text-gray-500 py-4">Loading...</div>
             ) : canViewStats ? (
               statsLoading ? (
-                <div className="text-center text-gray-500 py-4">Loading stats...</div>
+                <div className="text-center text-gray-500 py-4">
+                  Loading stats...
+                </div>
               ) : (
                 <div className="flex flex-col gap-6">
                   <div>

@@ -9,7 +9,7 @@ import { Album, Song } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
 
-// ۱. اضافه شدن فیلد album به ApiMusic برای رفع ارور لینتر
+// ========== TYPES ==========
 interface ApiArtist {
   id: number;
   stage_name: string;
@@ -44,6 +44,26 @@ interface DisplayAlbum extends Album {
   artistName: string;
 }
 
+interface SubscriptionData {
+  plan: {
+    id: number;
+    name: string;
+    max_daily_streams: number | null;
+    max_playlists: number | null;
+    can_upload_profile_image: boolean;
+    can_download: boolean;
+    can_early_access: boolean;
+    can_view_statistics: boolean;
+    is_active: boolean;
+  };
+  price: string;
+  duration_months: number;
+  start_date: string;
+  end_date: string | null;
+  status: string;
+  is_default_base: boolean;
+}
+
 export default function HomePage() {
   const { user } = useAuth();
   const { playSong } = usePlayer();
@@ -52,18 +72,30 @@ export default function HomePage() {
   const [songs, setSongs] = useState<DisplaySong[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Subscription state
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null,
+  );
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "/default-cover.png";
     if (path.startsWith("http")) return path;
     return `http://127.0.0.1:8000${path}`;
   };
 
+  const getHeaders = (): HeadersInit => {
+    const token = localStorage.getItem("access_token");
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  // ---- Fetch music & albums ----
   useEffect(() => {
-    const fetchRealData = async () => {
+    const fetchMusicData = async () => {
       try {
         const token = localStorage.getItem("access_token");
-
-        // ۲. رفع ارور تایپ‌اسکریپت برای Header
         const headers: Record<string, string> = {};
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -80,6 +112,7 @@ export default function HomePage() {
           }),
         ]);
 
+        // If unauthorized, try public access
         if (musicRes.status === 401 || albumRes.status === 401) {
           const publicRes = await Promise.all([
             fetch("http://127.0.0.1:8000/music/musics/", { cache: "no-store" }),
@@ -134,8 +167,43 @@ export default function HomePage() {
       }
     };
 
-    fetchRealData();
+    fetchMusicData();
   }, []);
+
+  // ---- Fetch subscription data ----
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user) {
+        setSubscriptionLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(
+          "http://127.0.0.1:8000/subscriptions/me/subscription/",
+          {
+            headers: getHeaders(),
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSubscription(data);
+        } else {
+          // If endpoint fails, assume base plan
+          setSubscription(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch subscription:", error);
+        setSubscription(null);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, [user]);
+
+  // ---- Determine if user has early access ----
+  const hasEarlyAccess = subscription?.plan?.can_early_access === true;
 
   const exclusiveSongs = songs.slice(0, 2);
 
@@ -155,7 +223,8 @@ export default function HomePage() {
         </h1>
       </div>
 
-      {user?.subscription === "GOLD" && (
+      {/* Gold Exclusive section – only if user has early access */}
+      {user && hasEarlyAccess && (
         <section className="bg-gradient-to-r from-green-600 to-green-400 rounded-2xl p-6 text-white shadow-md animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold">
