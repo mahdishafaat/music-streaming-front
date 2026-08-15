@@ -19,7 +19,7 @@ type RealArtistRequest = {
   created_at: string;
 };
 
-// ========== TICKET TYPES (matching backend) ==========
+// ========== TICKET TYPES ==========
 type ApiTicket = {
   id: number;
   user: {
@@ -45,7 +45,7 @@ type ApiMessage = {
   created_at: string;
 };
 
-// ========== OLD LEGACY TYPES (kept for audit & system) ==========
+// ========== AUDIT TYPE ==========
 type Audit = {
   artistId: string;
   name: string;
@@ -53,6 +53,31 @@ type Audit = {
   streams: number;
   reward: number;
   status: "PENDING" | "SETTLED";
+};
+
+// ========== DASHBOARD STATS ==========
+type DashboardStats = {
+  current_month_revenue: number;
+  active_users: number;
+  subscription_distribution: {
+    base: number;
+    silver: number;
+    gold: number;
+  };
+};
+
+// ========== PRICE MANAGEMENT TYPES ==========
+type PlanPrice = {
+  id: number;
+  duration_months: number;
+  price: string;
+  is_active: boolean;
+};
+
+type Plan = {
+  id: number;
+  name: string;
+  prices: PlanPrice[];
 };
 
 export default function DashboardPage() {
@@ -74,7 +99,7 @@ export default function DashboardPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [replyText, setReplyText] = useState("");
 
-  // ---- Audit & System (mock) ----
+  // ---- Audit (mock) ----
   const [audits, setAudits] = useState<Audit[]>([
     {
       artistId: "art_1",
@@ -94,12 +119,18 @@ export default function DashboardPage() {
     },
   ]);
 
-  const [silverPrice, setSilverPrice] = useState(4.99);
-  const [goldPrice, setGoldPrice] = useState(9.99);
+  // ---- System Tab Stats ----
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // ---- Price Management ----
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [updatingPrice, setUpdatingPrice] = useState<{ [key: number]: boolean }>({});
 
   // ========== API CALLS ==========
 
-  // Fetch artist requests (unchanged)
+  // Fetch artist requests
   const fetchArtistRequests = async () => {
     setIsLoadingRequests(true);
     try {
@@ -120,6 +151,53 @@ export default function DashboardPage() {
       setIsLoadingRequests(false);
     }
   };
+
+  // Fetch tickets
+  const fetchTickets = async () => {
+    setIsLoadingTickets(true);
+    setTicketError(null);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("http://127.0.0.1:8000/ticket/tickets/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch tickets: ${res.status}`);
+      }
+      const data = await res.json();
+      setTickets(data);
+    } catch (error) {
+      setTicketError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setIsLoadingTickets(false);
+    }
+  };
+
+  // Fetch messages for a specific ticket
+  const fetchMessages = async (ticketId: number) => {
+    setIsLoadingMessages(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `http://127.0.0.1:8000/ticket/tickets/${ticketId}/messages/`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`Failed to fetch messages: ${res.status}`);
+      }
+      const data = await res.json();
+      setMessages(data);
+    } catch (error) {
+      console.error("Error loading messages", error);
+      alert("Could not load messages for this ticket.");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  };
+
+  // Send reply
   const sendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeTicket) return;
@@ -145,59 +223,11 @@ export default function DashboardPage() {
       }
 
       const newMsg = await res.json();
-      setMessages((prev) => [...prev, newMsg]);   // add to chat
+      setMessages((prev) => [...prev, newMsg]);
       setReplyText("");
-
-      // Refresh ticket list to reflect any status change (e.g., -> IN_PROGRESS)
       await fetchTickets();
-
     } catch (err) {
       alert(err instanceof Error ? err.message : "Network error");
-    }
-  };
-
-  // Fetch tickets from the first endpoint
-  const fetchTickets = async () => {
-    setIsLoadingTickets(true);
-    setTicketError(null);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch("http://127.0.0.1:8000/ticket/tickets/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to fetch tickets: ${res.status}`);
-      }
-      const data = await res.json();
-      setTickets(data);
-    } catch (error) {
-      setTicketError(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
-
-  // Fetch messages for a specific ticket (second endpoint)
-  const fetchMessages = async (ticketId: number) => {
-    setIsLoadingMessages(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `http://127.0.0.1:8000/ticket/tickets/${ticketId}/messages/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) {
-        throw new Error(`Failed to fetch messages: ${res.status}`);
-      }
-      const data = await res.json();
-      setMessages(data);
-    } catch (error) {
-      console.error("Error loading messages", error);
-      alert("Could not load messages for this ticket.");
-    } finally {
-      setIsLoadingMessages(false);
     }
   };
 
@@ -212,6 +242,109 @@ export default function DashboardPage() {
     setActiveTicket(null);
     setMessages([]);
     setReplyText("");
+  };
+
+  // ---- Fetch Dashboard Stats ----
+  const fetchDashboardStats = async () => {
+    setStatsLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        "http://127.0.0.1:8000/subscriptions/admin/dashboard/stats/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setDashboardStats(data);
+      } else {
+        console.error("Failed to fetch dashboard stats");
+        setDashboardStats(null);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      setDashboardStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  // ---- Fetch Plans with Prices ----
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        "http://127.0.0.1:8000/subscriptions/admin/plans/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setPlans(data);
+      } else {
+        console.error("Failed to fetch plans");
+      }
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  // ---- Handle price change in input ----
+  const handlePriceChange = (planId: number, priceId: number, newPrice: number) => {
+    setPlans((prevPlans) =>
+      prevPlans.map((plan) =>
+        plan.id === planId
+          ? {
+              ...plan,
+              prices: plan.prices.map((price) =>
+                price.id === priceId ? { ...price, price: newPrice.toString() } : price
+              ),
+            }
+          : plan
+      )
+    );
+  };
+
+  // ---- Submit price update ----
+  const handleUpdatePrice = async (priceId: number) => {
+    const priceObj = plans
+      .flatMap((p) => p.prices)
+      .find((p) => p.id === priceId);
+    if (!priceObj) return;
+
+    setUpdatingPrice((prev) => ({ ...prev, [priceId]: true }));
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(
+        `http://127.0.0.1:8000/subscriptions/admin/subscription-prices/${priceId}/`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ price: parseFloat(priceObj.price) }),
+        }
+      );
+      if (res.ok) {
+        alert("Price updated successfully!");
+        // Optionally refresh plans to reflect any changes from backend
+        await fetchPlans();
+      } else {
+        const error = await res.json().catch(() => ({}));
+        alert(`Failed to update: ${error.detail || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error updating price:", error);
+      alert("Network error");
+    } finally {
+      setUpdatingPrice((prev) => ({ ...prev, [priceId]: false }));
+    }
   };
 
   // ========== ARTIST ACTIONS ==========
@@ -230,9 +363,7 @@ export default function DashboardPage() {
         }
       );
       if (res.ok) {
-        alert(
-          "Artist approved successfully. Backend created Artist profile automatically!"
-        );
+        alert("Artist approved successfully!");
         fetchArtistRequests();
       } else {
         alert("Failed to approve artist.");
@@ -279,11 +410,6 @@ export default function DashboardPage() {
     alert("Settlement approved successfully.");
   };
 
-  const handleUpdatePrices = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    alert(`Prices updated:\nSilver: $${silverPrice}\nGold: $${goldPrice}`);
-  };
-
   // ========== useEffect ==========
   useEffect(() => {
     const runEffect = async () => {
@@ -292,6 +418,8 @@ export default function DashboardPage() {
           fetchArtistRequests();
         } else if (activeTab === "tickets") {
           await fetchTickets();
+        } else if (activeTab === "system" && user.role === "ADMIN") {
+          await Promise.all([fetchDashboardStats(), fetchPlans()]);
         }
       } else if (user) {
         router.push("/");
@@ -448,7 +576,6 @@ export default function DashboardPage() {
               <p className="text-center text-gray-500">No messages yet.</p>
             ) : (
               messages.map((msg) => {
-                // const isSender = msg.sender.id === user?.id;
                 const isSender = String(msg.sender.id) === String(user?.id);
                 return (
                   <div
@@ -625,112 +752,147 @@ export default function DashboardPage() {
     </div>
   );
 
-  const renderSystemTab = () => (
-    <div className="animate-fade-in flex flex-col gap-10">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
-        System Settings & Reports
-      </h2>
+  // ========== SYSTEM TAB (with Stats + Price Management) ==========
+  const renderSystemTab = () => {
+    const stats = dashboardStats;
+    const totalSubscribers = stats
+      ? stats.subscription_distribution.base +
+        stats.subscription_distribution.silver +
+        stats.subscription_distribution.gold
+      : 0;
+    const basePct = totalSubscribers
+      ? (stats?.subscription_distribution.base / totalSubscribers) * 100
+      : 0;
+    const silverPct = totalSubscribers
+      ? (stats?.subscription_distribution.silver / totalSubscribers) * 100
+      : 0;
+    const goldPct = totalSubscribers
+      ? (stats?.subscription_distribution.gold / totalSubscribers) * 100
+      : 0;
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
-          <h3 className="text-xl font-bold mb-6 flex items-center gap-3 text-gray-900 dark:text-white">
-            <svg
-              className="w-6 h-6 text-green-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            Price Control Panel
-          </h3>
-          <form onSubmit={handleUpdatePrices} className="flex flex-col gap-5">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                Silver Subscription Price ($)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={silverPrice}
-                onChange={(e) => setSilverPrice(parseFloat(e.target.value))}
-                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
-                Gold Subscription Price ($)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={goldPrice}
-                onChange={(e) => setGoldPrice(parseFloat(e.target.value))}
-                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500 dark:text-white outline-none transition-all"
-              />
-            </div>
-            <button
-              type="submit"
-              className="mt-4 w-full bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white font-bold py-3.5 rounded-xl transition-colors shadow-md"
-            >
-              Update Prices
-            </button>
-          </form>
-        </div>
+    return (
+      <div className="animate-fade-in flex flex-col gap-10">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
+          System Settings & Reports
+        </h2>
 
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-lg shadow-green-500/20">
-              <p className="text-sm font-medium text-green-100 mb-2 tracking-wide">
-                Current Month Revenue
-              </p>
-              <h4 className="text-4xl font-black">$42,500</h4>
+        {/* Stats Section */}
+        {statsLoading ? (
+          <div className="p-8 text-center text-gray-500">Loading dashboard stats...</div>
+        ) : stats ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-lg shadow-green-500/20">
+                  <p className="text-sm font-medium text-green-100 mb-2 tracking-wide">
+                    Current Month Revenue
+                  </p>
+                  <h4 className="text-4xl font-black break-all">
+                    {stats.current_month_revenue.toLocaleString()} Rials
+                  </h4>
+                </div>
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20">
+                  <p className="text-sm font-medium text-blue-100 mb-2 tracking-wide">
+                    Active Users
+                  </p>
+                  <h4 className="text-4xl font-black">
+                    {stats.active_users.toLocaleString()}
+                  </h4>
+                </div>
+              </div>
             </div>
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20">
-              <p className="text-sm font-medium text-blue-100 mb-2 tracking-wide">
-                Active Users
-              </p>
-              <h4 className="text-4xl font-black">18.2K</h4>
+
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex items-center justify-between h-full">
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-5 text-lg">
+                  Subscription Distribution
+                </h3>
+                <ul className="text-sm flex flex-col gap-3 font-medium">
+                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                    <span className="w-4 h-4 rounded-full bg-gray-400"></span>{" "}
+                    Base Plan ({Math.round(basePct)}%)
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                    <span className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></span>{" "}
+                    Silver Plan ({Math.round(silverPct)}%)
+                  </li>
+                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+                    <span className="w-4 h-4 rounded-full bg-yellow-500 shadow-sm"></span>{" "}
+                    Gold Plan ({Math.round(goldPct)}%)
+                  </li>
+                </ul>
+              </div>
+              <div
+                className="w-40 h-40 rounded-full shadow-inner border-[6px] border-white dark:border-gray-800"
+                style={{
+                  background: `conic-gradient(#3B82F6 0% ${silverPct}%, #EAB308 ${silverPct}% ${
+                    silverPct + goldPct
+                  }%, #9CA3AF ${silverPct + goldPct}% 100%)`,
+                }}
+              ></div>
             </div>
           </div>
+        ) : (
+          <div className="p-8 text-center text-red-500">Failed to load stats.</div>
+        )}
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex items-center justify-between h-full">
-            <div>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-5 text-lg">
-                Subscription Distribution
-              </h3>
-              <ul className="text-sm flex flex-col gap-3 font-medium">
-                <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                  <span className="w-4 h-4 rounded-full bg-gray-400"></span>{" "}
-                  Base Plan (50%)
-                </li>
-                <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                  <span className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></span>{" "}
-                  Silver Plan (30%)
-                </li>
-                <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                  <span className="w-4 h-4 rounded-full bg-yellow-500 shadow-sm"></span>{" "}
-                  Gold Plan (20%)
-                </li>
-              </ul>
-            </div>
-            <div
-              className="w-40 h-40 rounded-full shadow-inner border-[6px] border-white dark:border-gray-800"
-              style={{
-                background:
-                  "conic-gradient(#3B82F6 0% 30%, #EAB308 30% 50%, #9CA3AF 50% 100%)",
-              }}
-            ></div>
-          </div>
-        </div>
+        {/* Price Management Section (Admin only) */}
+        {isAdmin && (
+          <section className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-8">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Manage Subscription Prices
+            </h3>
+            {plansLoading ? (
+              <div className="p-4 text-center text-gray-500">Loading plans...</div>
+            ) : plans.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm"
+                  >
+                    <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-2">
+                      {plan.name}
+                    </h4>
+                    <div className="space-y-3">
+                      {plan.prices.map((price) => (
+                        <div key={price.id} className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[65px]">
+                            {price.is_active ? "Active" : "Inactive"}
+                          </span>
+                          <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[45px]">
+                            {price.duration_months}m
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={parseFloat(price.price)}
+                            onChange={(e) =>
+                              handlePriceChange(plan.id, price.id, parseFloat(e.target.value))
+                            }
+                            className="w-24 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
+                          />
+                          <button
+                            onClick={() => handleUpdatePrice(price.id)}
+                            disabled={updatingPrice[price.id]}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded text-sm transition-colors"
+                          >
+                            {updatingPrice[price.id] ? "Saving..." : "Update"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-gray-500">No plans found.</div>
+            )}
+          </section>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // ========== MAIN LAYOUT ==========
   return (
@@ -756,12 +918,7 @@ export default function DashboardPage() {
               : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -780,12 +937,7 @@ export default function DashboardPage() {
               : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -808,12 +960,7 @@ export default function DashboardPage() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -832,12 +979,7 @@ export default function DashboardPage() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
