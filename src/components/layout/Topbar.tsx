@@ -123,7 +123,8 @@ export default function Topbar() {
           onFocus={() => {
             if (pathname !== "/search") router.push("/search");
           }}
-          className="w-full pl-10 pr-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700/50 border border-transparent dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:bg-white focus:border-green-500 transition-all text-sm"
+          // تغییرات UI: رنگ پس‌زمینه تیره‌تر در دارک‌مود و رنگ متن سفیدتر
+          className="w-full pl-10 pr-4 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800/80 border border-transparent dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:border-green-500 dark:focus:border-green-500 transition-all text-sm shadow-inner"
         />
       </div>
 

@@ -1,10 +1,8 @@
 // src/app/(main)/search/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { usePlayer } from "@/context/PlayerContext";
-import { useAuth } from "@/context/AuthContext";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import SongCard from "@/components/ui/SongCard";
 import AlbumCard from "@/components/ui/AlbumCard";
 import Image from "next/image";
@@ -18,6 +16,8 @@ interface SearchArtist {
   is_verified: boolean;
   profile_image: string | null;
   followers_count: number;
+  role: string;
+  artist_id?: number | null;
 }
 
 interface SearchSong {
@@ -52,7 +52,6 @@ interface SearchResponse {
 }
 
 // ========== CONVERTER FUNCTIONS ==========
-// Convert API Song to the Song type expected by SongCard
 const toSongType = (apiSong: SearchSong) => ({
   id: apiSong.id.toString(),
   title: apiSong.title,
@@ -68,28 +67,23 @@ const toSongType = (apiSong: SearchSong) => ({
   lyrics: apiSong.lyrics || "",
 });
 
-// Convert API Album to the Album type expected by AlbumCard
 const toAlbumType = (apiAlbum: SearchAlbum) => ({
   id: apiAlbum.id.toString(),
   title: apiAlbum.title,
   artistId: apiAlbum.artist_id?.toString() || "unknown",
   artistName: apiAlbum.artist_name || "Various Artists",
-  coverImage: `http://127.0.0.1:8000/${apiAlbum.cover}` || "/default-album.png",
+  coverImage: apiAlbum.cover?.startsWith("http")
+    ? apiAlbum.cover
+    : `http://127.0.0.1:8000${apiAlbum.cover}`,
   releaseDate: apiAlbum.release_date,
   songIds: [],
 });
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const { user } = useAuth();
-  const { playSong } = usePlayer();
+  const query = searchParams.get("q") || "";
 
-  // Get query from URL
-  const initialQuery = searchParams.get("q") || "";
-  const [query, setQuery] = useState(initialQuery);
-
-  // Sorting
+  // Sorting state
   const [sortBy, setSortBy] = useState<"listeners" | "date">("listeners");
 
   // Results state
@@ -113,7 +107,9 @@ export default function SearchPage() {
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path}`;
+    const normalizedPath = path.replace(/\\/g, "/");
+    const prefix = normalizedPath.startsWith("/") ? "" : "/";
+    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
   };
 
   // ---- Fetch search results ----
@@ -132,7 +128,7 @@ export default function SearchPage() {
         const url = new URL("http://127.0.0.1:8000/music/search/");
         url.searchParams.append("q", searchQuery.trim());
         url.searchParams.append("sort", sort);
-        url.searchParams.append("limit", "20"); // you can adjust or make it configurable
+        url.searchParams.append("limit", "20");
 
         const res = await fetch(url.toString(), {
           headers: getHeaders(),
@@ -155,47 +151,34 @@ export default function SearchPage() {
     [],
   );
 
-  // ---- Debounce and trigger search ----
+  // ---- Trigger search on query or sort change ----
   useEffect(() => {
+    // Topbar handles debouncing and query params, so we just fetch here.
     const timer = setTimeout(() => {
-      // Update URL with query (for shareability)
-      if (query.trim()) {
-        router.replace(`/search?q=${encodeURIComponent(query.trim())}`, {
-          scroll: false,
-        });
-      } else {
-        router.replace("/search", { scroll: false });
-      }
       fetchResults(query, sortBy);
-    }, 300); // 300ms debounce
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, [query, sortBy, fetchResults, router]);
+  }, [query, sortBy, fetchResults]);
 
-  // ---- Initial load from URL ----
-  useEffect(() => {
-    if (initialQuery) {
-      setQuery(initialQuery);
-      fetchResults(initialQuery, sortBy);
-    }
-  }, [initialQuery, sortBy, fetchResults]);
-
-  // ---- Handle sort change ----
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortBy(e.target.value as "listeners" | "date");
-  };
-
-  // ---- Helper to render artist card ----
+  // ---- Helper to render artist/user card ----
   const renderArtistCard = (artist: SearchArtist) => {
     const imageUrl = getFullUrl(artist.profile_image);
+
+    // 🌟 هدایت کاملاً دقیق: اگر آرتیست بود از artist_id استفاده کن، وگرنه از id یوزر
+    const profileRoute =
+      artist.role === "artist" && artist.artist_id
+        ? `/artists/${artist.artist_id}`
+        : `/users/${artist.id}`;
+
     return (
       <Link
         key={artist.id}
-        href={`/artists/${artist.id}`}
-        className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all group"
+        href={profileRoute} // 👈 مسیر جدید و هوشمند
+        className="bg-white dark:bg-gray-800/60 rounded-xl overflow-hidden shadow-xs border border-gray-100 dark:border-gray-700 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group flex flex-col items-center p-6 text-center"
       >
-        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-green-400 to-blue-500">
-          {imageUrl ? (
+        <div className="relative w-32 h-32 rounded-full overflow-hidden shadow-lg border-4 border-white dark:border-gray-700 bg-linear-to-tr from-green-400 to-blue-500 mb-4 shrink-0">
+          {imageUrl && !imageUrl.includes("base_profile") ? (
             <Image
               src={imageUrl}
               alt={artist.stage_name}
@@ -205,13 +188,13 @@ export default function SearchPage() {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <span className="text-6xl font-black text-white opacity-70">
+              <span className="text-5xl font-black text-white opacity-80 shadow-sm">
                 {artist.stage_name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           {artist.is_verified && (
-            <div className="absolute top-2 right-2 bg-blue-500 rounded-full p-1 shadow-lg">
+            <div className="absolute bottom-1 right-1 bg-blue-500 rounded-full p-1 shadow-lg border-2 border-white dark:border-gray-800">
               <svg
                 className="w-4 h-4 text-white"
                 fill="currentColor"
@@ -222,19 +205,16 @@ export default function SearchPage() {
             </div>
           )}
         </div>
-        <div className="p-4">
-          <h3 className="font-bold text-gray-900 dark:text-white truncate">
-            {artist.stage_name}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-            {artist.followers_count.toLocaleString()} followers
-          </p>
-          {artist.bio && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-2">
-              {artist.bio}
-            </p>
-          )}
-        </div>
+
+        <h3 className="font-bold text-gray-900 dark:text-white truncate w-full text-lg">
+          {artist.stage_name}
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1 uppercase tracking-widest">
+          {artist.role} {/* 👈 نمایش دقیق نقش در روی کارت */}
+        </p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+          {artist.followers_count.toLocaleString()} followers
+        </p>
       </Link>
     );
   };
@@ -247,104 +227,99 @@ export default function SearchPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-10 transition-colors min-h-full max-w-7xl mx-auto w-full px-4">
-      {/* Search bar + sort */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for songs, albums, artists..."
-            className="w-full px-5 py-3.5 pl-12 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-white transition-shadow shadow-sm"
-          />
-          <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
+      {/* Header and Sorting (Only show sort if there's a query) */}
+      {query.trim() && (
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Search results for &quot;
+            <span className="text-green-600">{query}</span>&quot;
+          </h1>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <label
-            htmlFor="sort"
-            className="text-sm font-medium text-gray-600 dark:text-gray-300"
-          >
-            Sort by:
-          </label>
-          <select
-            id="sort"
-            value={sortBy}
-            onChange={handleSortChange}
-            className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-white text-sm font-medium cursor-pointer"
-          >
-            <option value="listeners">Listeners</option>
-            <option value="date">Release Date</option>
-          </select>
+          <div className="flex items-center gap-3 shrink-0">
+            <svg
+              className="w-5 h-5 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"
+              ></path>
+            </svg>
+            <select
+              value={sortBy}
+              onChange={(e) =>
+                setSortBy(e.target.value as "listeners" | "date")
+              }
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 border-none rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-white text-sm font-bold cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <option value="listeners">Top Listeners / Popularity</option>
+              <option value="date">Release Date / Newest</option>
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Loading state */}
       {loading && (
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+        <div className="flex justify-center items-center py-32">
+          <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-green-500 opacity-80"></div>
         </div>
       )}
 
       {/* No query – initial state */}
       {!loading && !query.trim() && !hasSearched && (
-        <div className="flex flex-col items-center justify-center flex-1 py-20 text-center">
-          <svg
-            className="w-20 h-20 text-gray-300 dark:text-gray-600 mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Search for music
+        <div className="flex flex-col items-center justify-center flex-1 py-32 text-center animate-fade-in">
+          <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-full mb-6">
+            <svg
+              className="w-16 h-16 text-gray-400 dark:text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3">
+            What do you want to listen to?
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
-            Find your favorite songs, albums, and artists.
+          <p className="text-gray-500 dark:text-gray-400 font-medium">
+            Search for your favorite songs, albums, and users.
           </p>
         </div>
       )}
 
       {/* No results */}
       {!loading && query.trim() && !hasResults && hasSearched && (
-        <div className="flex flex-col items-center justify-center flex-1 py-20 text-center">
+        <div className="flex flex-col items-center justify-center flex-1 py-32 text-center animate-fade-in">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            No results for &quot;{query}&quot;
+            No results found for &quot;{query}&quot;
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
-            Try adjusting your search or check your spelling.
+          <p className="text-gray-500 dark:text-gray-400 font-medium">
+            Please make sure your words are spelled correctly or use less or
+            different keywords.
           </p>
         </div>
       )}
 
       {/* Results */}
       {!loading && hasResults && (
-        <div className="flex flex-col gap-10">
-          {/* Artists */}
+        <div className="flex flex-col gap-12 animate-fade-in">
+          {/* Artists / Users */}
           {results.artists.length > 0 && (
             <section>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                Artists
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
+                Users & Artists
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                 {results.artists.map(renderArtistCard)}
               </div>
             </section>
@@ -353,19 +328,23 @@ export default function SearchPage() {
           {/* Songs */}
           {results.songs.length > 0 && (
             <section>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
                 Songs
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-2">
                 {results.songs.map((song) => {
                   const songData = toSongType(song);
                   return (
-                    <SongCard
+                    <div
                       key={song.id}
-                      song={songData}
-                      artistName={song.artist_name}
-                      contextSongs={results.songs.map(toSongType)}
-                    />
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-xl transition-colors pr-2"
+                    >
+                      <SongCard
+                        song={songData}
+                        artistName={song.artist_name}
+                        contextSongs={results.songs.map(toSongType)}
+                      />
+                    </div>
                   );
                 })}
               </div>
@@ -375,10 +354,10 @@ export default function SearchPage() {
           {/* Albums */}
           {results.albums.length > 0 && (
             <section>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
                 Albums
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                 {results.albums.map((album) => (
                   <AlbumCard
                     key={album.id}
