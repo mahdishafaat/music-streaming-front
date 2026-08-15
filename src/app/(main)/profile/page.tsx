@@ -90,16 +90,22 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Daily streams
-  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(null);
+  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(
+    null,
+  );
 
   // Follow stats
   const [followStats, setFollowStats] = useState<FollowStatsData | null>(null);
 
   // Subscription
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null,
+  );
 
   // Artist profile (if role === artist)
-  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(null);
+  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(
+    null,
+  );
   console.log("artistProfile:", artistProfile);
 
   // Edit form state (common)
@@ -111,6 +117,7 @@ export default function ProfilePage() {
   // Image upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -131,10 +138,18 @@ export default function ProfilePage() {
     setLoadingProfile(true);
     try {
       const [profileRes, streamsRes, followRes, subRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/accounts/profile/me/", { headers: getHeaders() }),
-        fetch("http://127.0.0.1:8000/accounts/me/daily-streams/", { headers: getHeaders() }),
-        fetch("http://127.0.0.1:8000/accounts/users/me/follow-stats/", { headers: getHeaders() }),
-        fetch("http://127.0.0.1:8000/subscriptions/me/subscription/", { headers: getHeaders() }),
+        fetch("http://127.0.0.1:8000/accounts/profile/me/", {
+          headers: getHeaders(),
+        }),
+        fetch("http://127.0.0.1:8000/accounts/me/daily-streams/", {
+          headers: getHeaders(),
+        }),
+        fetch("http://127.0.0.1:8000/accounts/users/me/follow-stats/", {
+          headers: getHeaders(),
+        }),
+        fetch("http://127.0.0.1:8000/subscriptions/me/subscription/", {
+          headers: getHeaders(),
+        }),
       ]);
 
       if (!profileRes.ok) throw new Error("Failed to fetch profile");
@@ -157,9 +172,12 @@ export default function ProfilePage() {
 
       // If user is artist, fetch artist profile
       if (profileData.role === "artist") {
-        const artistRes = await fetch("http://127.0.0.1:8000/accounts/artist/profile/me/", {
-          headers: getHeaders(),
-        });
+        const artistRes = await fetch(
+          "http://127.0.0.1:8000/accounts/artist/profile/me/",
+          {
+            headers: getHeaders(),
+          },
+        );
         if (artistRes.ok) {
           const artistData = await artistRes.json();
           setArtistProfile(artistData);
@@ -281,7 +299,7 @@ export default function ProfilePage() {
     // Check subscription permission
     if (subscription && !subscription.plan.can_upload_profile_image) {
       setUpdateError(
-        "Your subscription plan does not allow changing your profile picture."
+        "Your subscription plan does not allow changing your profile picture.",
       );
       setTimeout(() => setUpdateError(null), 5000);
       return;
@@ -344,11 +362,24 @@ export default function ProfilePage() {
       }
 
       const updated = await res.json();
-      setProfileData((prev) => ({ ...prev!, ...updated }));
+
+      // آپدیت کردن استیت با دیتای جدید و جلوگیری از کش شدن عکس
+      setProfileData((prev) => {
+        if (!prev) return updated;
+        return {
+          ...prev,
+          ...updated,
+          // اضافه کردن یک تایم‌استمپ تصادفی به URL عکس تا مرورگر نسخه جدید را اجباراً لود کند
+          profile_image: updated.profile_image
+            ? `${updated.profile_image}?t=${new Date().getTime()}`
+            : prev.profile_image,
+        };
+      });
+      setImgError(false);
       setIsImageModalOpen(false);
       setSelectedFile(null);
       setImagePreview(null);
-      alert("Profile image updated successfully!");
+      // alert("Profile image updated successfully!"); // این الرت روی مخ رو هم می‌تونی کامنت کنی
     } catch (err) {
       alert(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -370,7 +401,9 @@ export default function ProfilePage() {
   if (loadingProfile) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] gap-4">
-        <div className="text-gray-500 dark:text-gray-400">Loading profile...</div>
+        <div className="text-gray-500 dark:text-gray-400">
+          Loading profile...
+        </div>
       </div>
     );
   }
@@ -378,7 +411,9 @@ export default function ProfilePage() {
   if (!profileData) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] gap-4">
-        <div className="text-red-500">Failed to load profile. Please refresh.</div>
+        <div className="text-red-500">
+          Failed to load profile. Please refresh.
+        </div>
       </div>
     );
   }
@@ -396,6 +431,16 @@ export default function ProfilePage() {
   // Both listeners and artists can edit (but with different fields)
   const isEditable = role === "listener" || role === "artist";
 
+  // 🌟 تابع هوشمند و ضدکِرَش برای ساخت URL عکس پروفایل
+  const getValidImageUrl = (path: string | null) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const normalizedPath = path.replace(/\\/g, "/");
+    const prefix = normalizedPath.startsWith("/") ? "" : "/";
+    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+  };
+
+  const finalProfileImage = getValidImageUrl(profileImage);
   // ---- Main Render ----
   return (
     <div className="flex flex-col gap-10 pb-10 transition-colors max-w-6xl mx-auto w-full relative">
@@ -410,13 +455,14 @@ export default function ProfilePage() {
       <div className="flex flex-col md:flex-row items-center md:items-end gap-6 pb-8 border-b border-gray-200 dark:border-gray-800">
         {/* Profile Image */}
         <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden shadow-2xl flex-shrink-0 bg-gradient-to-tr from-green-400 to-green-600 border-4 border-white dark:border-gray-900 flex items-center justify-center group">
-          {profileImage ? (
+          {finalProfileImage && !imgError ? (
             <Image
-              src={`http://127.0.0.1:8000/${profileImage}`}
+              src={finalProfileImage}
               alt={displayName}
               fill
               className="object-cover"
               unoptimized
+              onError={() => setImgError(true)}
             />
           ) : (
             <span className="text-6xl md:text-7xl font-bold text-white uppercase shadow-sm">
@@ -537,7 +583,10 @@ export default function ProfilePage() {
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
             Edit Profile
           </h2>
-          <form onSubmit={handleEditSubmit} className="flex flex-col gap-4 max-w-md">
+          <form
+            onSubmit={handleEditSubmit}
+            className="flex flex-col gap-4 max-w-md"
+          >
             {/* Common field: Display Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -551,7 +600,7 @@ export default function ProfilePage() {
                 required
               />
             </div>
-            
+
             {/* Artist-only fields */}
             {role === "artist" && artistProfile && (
               <>
@@ -614,7 +663,9 @@ export default function ProfilePage() {
           </h2>
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Stage Name</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Stage Name
+              </p>
               <p className="text-lg font-bold text-gray-900 dark:text-white">
                 {artistProfile.stage_name}
               </p>
@@ -626,13 +677,17 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Verified</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Verified
+              </p>
               <p className="text-lg font-bold text-green-600">
                 {artistProfile.is_verified ? "✅ Verified" : "Not Verified"}
               </p>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Streams</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Total Streams
+              </p>
               <p className="text-lg font-bold text-blue-600">
                 {artistProfile.total_streams.toLocaleString()}
               </p>
@@ -640,7 +695,9 @@ export default function ProfilePage() {
           </div>
           {artistProfile.albums.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Albums</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Albums
+              </h3>
               <div className="flex flex-wrap gap-3 mt-2">
                 {artistProfile.albums.slice(0, 5).map((album) => (
                   <span

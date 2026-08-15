@@ -44,12 +44,9 @@ export default function SubscriptionsPage() {
       try {
         setLoading(true);
         // Change this URL according to your API base path
-        const res = await fetch(
-          `http://127.0.0.1:8000/subscriptions/prices/`,
-          {
-            headers: getHeaders(),
-          }
-        );
+        const res = await fetch(`http://127.0.0.1:8000/subscriptions/prices/`, {
+          headers: getHeaders(),
+        });
 
         if (!res.ok) throw new Error("Failed to load subscription plans");
 
@@ -79,7 +76,6 @@ export default function SubscriptionsPage() {
 
   const plans = Object.values(plansMap);
 
-
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,11 +87,14 @@ export default function SubscriptionsPage() {
 
   const handleSelectPrice = async (priceId: number) => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/subscriptions/payments/create/", {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({ price_id: priceId }),
-      });
+      const res = await fetch(
+        "http://127.0.0.1:8000/subscriptions/payments/create/",
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ price_id: priceId }),
+        },
+      );
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -109,7 +108,11 @@ export default function SubscriptionsPage() {
       setRedirectUrl(data.payment_url);
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Something went wrong while creating payment");
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while creating payment",
+      );
     }
   };
 
