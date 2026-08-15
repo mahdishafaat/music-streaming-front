@@ -10,6 +10,7 @@ import { Album, Song } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
 
+// ========== TYPES ==========
 interface ApiArtistBasic {
   id: number;
   stage_name: string;
@@ -37,10 +38,12 @@ interface ApiAlbum {
 
 interface ApiArtistDetail {
   id: number;
+  user_id: number;
   user_display_name: string;
   stage_name: string;
   bio: string;
   is_verified: boolean;
+  profile_image: string | null;
   singles: ApiMusic[];
   albums: ApiAlbum[];
 }
@@ -53,101 +56,181 @@ interface DisplayAlbum extends Album {
   artistName: string;
 }
 
+interface SubscriptionData {
+  plan: {
+    id: number;
+    name: string;
+    can_view_statistics: boolean;
+  };
+}
+
 export default function ArtistProfilePage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { playSong } = usePlayer();
 
+  // ---- State ----
   const [artist, setArtist] = useState<ApiArtistDetail | null>(null);
   const [albums, setAlbums] = useState<DisplayAlbum[]>([]);
   const [singles, setSingles] = useState<DisplaySong[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const [stats, setStats] = useState({ listeners: 0, streams: 0 });
+  // Follow stats
+  const [followersCount, setFollowersCount] = useState<number | null>(null);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
 
+  // Artist statistics (streams / listeners)
+  const [totalStreams, setTotalStreams] = useState<number | null>(null);
+  const [uniqueListeners, setUniqueListeners] = useState<number | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  // Subscription
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  // ---- Helper functions ----
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     return `http://127.0.0.1:8000${path}`;
   };
 
+  const getHeaders = (): HeadersInit => {
+    const token = localStorage.getItem("access_token");
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
+
+  // ---- fetchFollowStats (followers/following counts) ----
+  const fetchFollowStats = async (userId: number) => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/accounts/users/${userId}/follow-stats/`,
+        { headers: getHeaders() }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setFollowersCount(data.followers_count);
+        setFollowingCount(data.following_count);
+      }
+    } catch (error) {
+      console.error("Error fetching follow stats:", error);
+    }
+  };
+
+  // ---- fetchFollowStatus (whether current user follows this artist) ----
+  const fetchFollowStatus = async (userId: number) => {
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/accounts/me/follows/${userId}/`,
+        { headers: getHeaders() }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setIsFollowing(data.is_following);
+      }
+    } catch (error) {
+      console.error("Error fetching follow status:", error);
+    }
+  };
+
+  // ---- 1. Fetch artist data ----
   useEffect(() => {
     const fetchArtistData = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        let res = await fetch(`http://127.0.0.1:8000/accounts/artists/${id}/`, {
-          headers,
+        const res = await fetch(`http://127.0.0.1:8000/accounts/artists/${id}/`, {
+          headers: getHeaders(),
           cache: "no-store",
         });
+        if (!res.ok) throw new Error("Failed to fetch artist");
+        const data: ApiArtistDetail = await res.json();
+        setArtist(data);
 
-        if (res.status === 401) {
-          res = await fetch(`http://127.0.0.1:8000/accounts/artists/${id}/`, {
-            cache: "no-store",
-          });
-        }
+        const mappedSingles: DisplaySong[] = (data.singles || []).map((m) => ({
+          id: m.id.toString(),
+          title: m.title,
+          artistId: data.id.toString(),
+          artistName: data.stage_name,
+          albumId: "",
+          coverImage: getFullUrl(m.cover),
+          audioUrl: getFullUrl(m.audio_file),
+          streamsCount: m.streams_count || 0,
+          likesCount: m.likes_count || 0,
+          isLiked: m.is_liked || false,
+          listenersCount: 0,
+          lyrics: m.lyrics || "",
+        }));
 
-        if (res.ok) {
-          const data: ApiArtistDetail = await res.json();
-          setArtist(data);
+        const mappedAlbums: DisplayAlbum[] = (data.albums || []).map((a) => ({
+          id: a.id.toString(),
+          title: a.title,
+          artistId: data.id.toString(),
+          artistName: data.stage_name,
+          coverImage: getFullUrl(a.cover),
+          releaseDate: a.release_date,
+          songIds: a.musics?.map((m) => m.id.toString()) || [],
+        }));
 
-          const mappedSingles: DisplaySong[] = (data.singles || []).map(
-            (m) => ({
-              id: m.id.toString(),
-              title: m.title,
-              artistId: data.id.toString(),
-              artistName: data.stage_name,
-              albumId: "",
-              coverImage: getFullUrl(m.cover),
-              audioUrl: getFullUrl(m.audio_file),
-              streamsCount: m.streams_count || 0,
-              likesCount: m.likes_count || 0,
-              isLiked: m.is_liked || false,
-              listenersCount: 0,
-              lyrics: m.lyrics || "",
-            }),
-          );
+        setSingles(mappedSingles);
+        setAlbums(mappedAlbums);
 
-          const mappedAlbums: DisplayAlbum[] = (data.albums || []).map((a) => ({
-            id: a.id.toString(),
-            title: a.title,
-            artistId: data.id.toString(),
-            artistName: data.stage_name,
-            coverImage: getFullUrl(a.cover),
-            releaseDate: a.release_date,
-            songIds: a.musics?.map((m) => m.id.toString()) || [],
-          }));
-
-          setSingles(mappedSingles);
-          setAlbums(mappedAlbums);
-
-          const totalStreams = mappedSingles.reduce(
-            (sum, song) => sum + (song.streamsCount || 0),
-            0,
-          );
-          setStats({
-            streams: totalStreams,
-            listeners: Math.floor(totalStreams * 0.7),
-          });
-          setIsFollowing(false);
+        // If user is logged in, fetch follow stats and follow status
+        if (user) {
+          fetchFollowStats(data.user_id);
+          fetchFollowStatus(data.user_id);
         }
       } catch (error) {
-        console.error("Error fetching artist data:", error);
+        console.error("Error fetching artist:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) {
-      fetchArtistData();
-    }
-  }, [id]);
+    if (id) fetchArtistData();
+  }, [id, user]);
 
+  // ---- 2. Fetch subscription and artist statistics ----
+  useEffect(() => {
+    const fetchSubscriptionAndStats = async () => {
+      if (!user) return;
+      setSubscriptionLoading(true);
+      try {
+        const subRes = await fetch("http://127.0.0.1:8000/subscriptions/me/subscription/", {
+          headers: getHeaders(),
+        });
+        if (subRes.ok) {
+          const subData = await subRes.json();
+          setSubscription(subData);
+
+          if (subData.plan.can_view_statistics) {
+            setStatsLoading(true);
+            const statsRes = await fetch(
+              `http://127.0.0.1:8000/music/artists/${id}/statistics/`,
+              { headers: getHeaders() }
+            );
+            if (statsRes.ok) {
+              const statsData = await statsRes.json();
+              setTotalStreams(statsData.total_streams);
+              setUniqueListeners(statsData.unique_listeners);
+            }
+            setStatsLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching subscription/stats:", error);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+
+    if (id && user) {
+      fetchSubscriptionAndStats();
+    }
+  }, [id, user]);
+
+  // ---- Follow / Unfollow ----
   const handleToggleFollow = async () => {
     if (!artist) return;
     const token = localStorage.getItem("access_token");
@@ -163,9 +246,12 @@ export default function ArtistProfilePage() {
           {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },
-          },
+          }
         );
-        if (res.ok) setIsFollowing(false);
+        if (res.ok) {
+          setIsFollowing(false);
+          setFollowersCount((prev) => (prev !== null ? prev - 1 : prev));
+        }
       } else {
         const res = await fetch("http://127.0.0.1:8000/accounts/follow/", {
           method: "POST",
@@ -175,7 +261,10 @@ export default function ArtistProfilePage() {
           },
           body: JSON.stringify({ display_name: artist.user_display_name }),
         });
-        if (res.ok) setIsFollowing(true);
+        if (res.ok) {
+          setIsFollowing(true);
+          setFollowersCount((prev) => (prev !== null ? prev + 1 : prev));
+        }
       }
     } catch (error) {
       console.error("Error toggling follow:", error);
@@ -188,47 +277,53 @@ export default function ArtistProfilePage() {
     }
   };
 
-  if (loading)
+  // ---- Render ----
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-[50vh] text-gray-500 font-bold">
         Loading artist data...
       </div>
     );
-  if (!artist)
+  }
+  if (!artist) {
     return (
       <div className="flex justify-center items-center h-[70vh] font-bold text-gray-500">
         Artist not found.
       </div>
     );
+  }
 
-  const artistImageUrl =
-    "https://images.unsplash.com/photo-1516280440502-86927d2c3dfb?auto=format&fit=crop&q=80";
+  const profileImage = artist.profile_image ? getFullUrl(artist.profile_image) : null;
+  const canViewStats = subscription?.plan?.can_view_statistics ?? false;
 
   return (
     <div className="flex flex-col gap-10 pb-12 transition-colors max-w-6xl mx-auto w-full animate-fade-in">
+      {/* Hero Section */}
       <div className="relative h-[40vh] md:h-[50vh] min-h-[300px] w-full rounded-3xl overflow-hidden shadow-lg group">
-        <Image
-          src={artistImageUrl}
-          alt={artist.stage_name}
-          fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
-          unoptimized
-        />
+        {profileImage ? (
+          <Image
+            src={profileImage}
+            alt={artist.stage_name}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            unoptimized
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center">
+            <span className="text-8xl font-black text-white opacity-70">
+              {artist.stage_name.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
         <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 flex flex-col md:flex-row items-end justify-between gap-6">
           <div className="flex flex-col gap-3">
             {artist.is_verified && (
               <div className="flex items-center gap-1.5 text-blue-400 bg-blue-500/10 backdrop-blur-md px-3 py-1 rounded-full w-fit">
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
-                <span className="text-sm font-bold tracking-wide">
-                  Verified Artist
-                </span>
+                <span className="text-sm font-bold tracking-wide">Verified Artist</span>
               </div>
             )}
             <h1 className="text-5xl md:text-7xl font-black text-white drop-shadow-lg tracking-tight">
@@ -237,6 +332,20 @@ export default function ArtistProfilePage() {
             <p className="text-gray-300 max-w-2xl text-sm md:text-base line-clamp-2">
               {artist.bio || "No biography available."}
             </p>
+            <div className="flex gap-6 text-sm text-gray-300">
+              <span>
+                <span className="font-bold text-white">
+                  {followersCount !== null ? followersCount.toLocaleString() : "—"}
+                </span>{" "}
+                Followers
+              </span>
+              <span>
+                <span className="font-bold text-white">
+                  {followingCount !== null ? followingCount.toLocaleString() : "—"}
+                </span>{" "}
+                Following
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <button
@@ -244,17 +353,17 @@ export default function ArtistProfilePage() {
               disabled={singles.length === 0}
               className="w-14 h-14 bg-green-500 hover:bg-green-400 hover:scale-105 text-white rounded-full flex items-center justify-center shadow-xl transition-all disabled:opacity-50"
             >
-              <svg
-                className="w-6 h-6 ml-1 text-black"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-6 h-6 ml-1 text-black" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </button>
             <button
               onClick={handleToggleFollow}
-              className={`px-6 py-2.5 rounded-full font-bold text-sm border-2 transition-colors ${isFollowing ? "border-gray-500 text-gray-300 hover:border-white" : "border-white text-white hover:bg-white hover:text-black"}`}
+              className={`px-6 py-2.5 rounded-full font-bold text-sm border-2 transition-colors ${
+                isFollowing
+                  ? "border-gray-500 text-gray-300 hover:border-white"
+                  : "border-white text-white hover:bg-white hover:text-black"
+              }`}
             >
               {isFollowing ? "Following" : "Follow"}
             </button>
@@ -262,6 +371,7 @@ export default function ArtistProfilePage() {
         </div>
       </div>
 
+      {/* Content */}
       <div className="flex flex-col lg:flex-row gap-10">
         <div className="flex-1 flex flex-col gap-10">
           {singles.length > 0 && (
@@ -305,30 +415,41 @@ export default function ArtistProfilePage() {
           )}
         </div>
 
+        {/* Stats Sidebar */}
         <div className="w-full lg:w-80 shrink-0">
           <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 sticky top-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               Artist Stats
             </h3>
-            {user?.subscription === "GOLD" ? (
-              <div className="flex flex-col gap-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">
-                    Estimated Listeners
-                  </p>
-                  <p className="text-3xl font-black text-gray-900 dark:text-white">
-                    {stats.listeners.toLocaleString()}
-                  </p>
+            {subscriptionLoading ? (
+              <div className="text-center text-gray-500 py-4">Loading...</div>
+            ) : canViewStats ? (
+              statsLoading ? (
+                <div className="text-center text-gray-500 py-4">Loading stats...</div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">
+                      Unique Listeners
+                    </p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                      {uniqueListeners !== null
+                        ? uniqueListeners.toLocaleString()
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">
+                      Total Streams
+                    </p>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">
+                      {totalStreams !== null
+                        ? totalStreams.toLocaleString()
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">
-                    Total Streams
-                  </p>
-                  <p className="text-3xl font-black text-gray-900 dark:text-white">
-                    {stats.streams.toLocaleString()}
-                  </p>
-                </div>
-              </div>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center p-4 bg-gray-100 dark:bg-gray-800 rounded-xl text-center border border-dashed border-gray-300 dark:border-gray-600">
                 <svg
@@ -345,10 +466,10 @@ export default function ArtistProfilePage() {
                   />
                 </svg>
                 <h4 className="font-bold text-gray-900 dark:text-white mb-1">
-                  Premium Insight
+                  Upgrade to View Stats
                 </h4>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Upgrade to GOLD to see detailed statistics.
+                  Your current plan does not include artist statistics.
                 </p>
               </div>
             )}
