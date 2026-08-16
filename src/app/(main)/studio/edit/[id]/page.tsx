@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { API_BASE_URL } from '@/config/api';
 
 // همون تایپ‌هایی که تو داشبورد استفاده کردیم
 type ArtistAlbum = { id: number; title: string };
@@ -45,7 +46,7 @@ export default function EditTrackPage() {
       const fetchMyAlbums = async () => {
         try {
           const token = localStorage.getItem("access_token");
-          const res = await fetch("http://127.0.0.1:8000/music/my-albums/", {
+          const res = await fetch(`${API_BASE_URL}/music/my-albums/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -69,7 +70,7 @@ export default function EditTrackPage() {
           const token = localStorage.getItem("access_token");
           // از همون ویوی Edit در بک‌اند با متد GET استفاده می‌کنیم
           const res = await fetch(
-            `http://127.0.0.1:8000/music/musics/${trackId}/edit/`,
+            `${API_BASE_URL}/music/musics/${trackId}/edit/`,
             {
               method: "GET",
               headers: { Authorization: `Bearer ${token}` },
@@ -131,7 +132,7 @@ export default function EditTrackPage() {
       const token = localStorage.getItem("access_token");
       // استفاده از متد PATCH برای آپدیت جزئی
       const response = await fetch(
-        `http://127.0.0.1:8000/music/musics/${trackId}/edit/`,
+        `${API_BASE_URL}/music/musics/${trackId}/edit/`,
         {
           method: "PATCH",
           headers: {

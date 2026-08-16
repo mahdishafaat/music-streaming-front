@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { API_BASE_URL } from '@/config/api';
 
 type AlbumDetail = {
   id: number;
@@ -38,7 +39,7 @@ export default function EditAlbumPage() {
         try {
           const token = localStorage.getItem("access_token");
           const res = await fetch(
-            `http://127.0.0.1:8000/music/albums/${albumId}/edit/`,
+            `${API_BASE_URL}/music/albums/${albumId}/edit/`,
             {
               method: "GET",
               headers: { Authorization: `Bearer ${token}` },
@@ -83,7 +84,7 @@ export default function EditAlbumPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `http://127.0.0.1:8000/music/albums/${albumId}/edit/`,
+        `${API_BASE_URL}/music/albums/${albumId}/edit/`,
         {
           method: "PATCH",
           headers: {

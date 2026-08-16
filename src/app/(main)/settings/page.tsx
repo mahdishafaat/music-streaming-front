@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { usePlayer } from "@/context/PlayerContext";
+import { API_BASE_URL } from '@/config/api';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -22,7 +23,7 @@ export default function SettingsPage() {
       if (!user) return;
       try {
         const token = localStorage.getItem("access_token");
-        const res = await fetch("http://127.0.0.1:8000/accounts/settings/", {
+        const res = await fetch(`${API_BASE_URL}/accounts/settings/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -48,7 +49,7 @@ export default function SettingsPage() {
   const updateBackendSetting = async (key: string, value: string | number) => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch("http://127.0.0.1:8000/accounts/settings/", {
+      await fetch(`${API_BASE_URL}/accounts/settings/`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

@@ -43,7 +43,7 @@ export default function StudioPage() {
       const fetchMyAlbums = async () => {
         try {
           const token = localStorage.getItem("access_token");
-          const res = await fetch("http://127.0.0.1:8000/music/my-albums/", {
+          const res = await fetch(`${API_BASE_URL}/music/my-albums/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -64,7 +64,7 @@ export default function StudioPage() {
       const token = localStorage.getItem("access_token");
       // فرض بر این است که یک اندپوینت برای آثار خود هنرمند در بک‌اند داریم
       // اگر نداریم باید در music/views.py ساخته شود
-      const res = await fetch("http://127.0.0.1:8000/music/my-musics/", {
+      const res = await fetch(`${API_BASE_URL}/music/my-musics/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -106,7 +106,7 @@ export default function StudioPage() {
         setMessage({ text: "Album created successfully!", type: "success" });
         form.reset();
         // رفرش لیست آلبوم‌ها
-        const res = await fetch("http://127.0.0.1:8000/music/my-albums/", {
+        const res = await fetch(`${API_BASE_URL}/music/my-albums/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) setAlbums(await res.json());
@@ -172,7 +172,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `http://127.0.0.1:8000/music/musics/${id}/delete/`,
+        `${API_BASE_URL}/music/musics/${id}/delete/`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -201,7 +201,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        `http://127.0.0.1:8000/music/albums/${id}/delete/`,
+        `${API_BASE_URL}/music/albums/${id}/delete/`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },

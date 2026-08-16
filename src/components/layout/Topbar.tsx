@@ -83,7 +83,7 @@ export default function Topbar({ onOpenMenu }: TopbarProps) {
     if (path.startsWith("http")) return path;
     const normalizedPath = path.replace(/\\/g, "/");
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
-    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+    return `${API_BASE_URL}${prefix}${normalizedPath}`;
   };
 
   const finalProfileImage = getValidImageUrl(profileImage);

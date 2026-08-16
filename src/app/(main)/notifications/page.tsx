@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Notification } from "@/types";
 import Link from "next/link";
+import { API_BASE_URL } from '@/config/api';
 
 interface BackendNotif {
   id: string;
@@ -43,7 +44,7 @@ export default function NotificationsPage() {
       try {
         const token = localStorage.getItem("access_token");
         const res = await fetch(
-          "http://127.0.0.1:8000/accounts/notifications/",
+          `${API_BASE_URL}/accounts/notifications/`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -94,7 +95,7 @@ export default function NotificationsPage() {
   const handleMarkAllAsRead = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch("http://127.0.0.1:8000/accounts/notifications/read-all/", {
+      await fetch(`${API_BASE_URL}/accounts/notifications/read-all/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -107,7 +108,7 @@ export default function NotificationsPage() {
   const handleMarkAsRead = async (id: string) => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://127.0.0.1:8000/accounts/notifications/${id}/`, {
+      await fetch(`${API_BASE_URL}/accounts/notifications/${id}/`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -122,7 +123,7 @@ export default function NotificationsPage() {
   const handleDelete = async (id: string) => {
     try {
       const token = localStorage.getItem("access_token");
-      await fetch(`http://127.0.0.1:8000/accounts/notifications/${id}/`, {
+      await fetch(`${API_BASE_URL}/accounts/notifications/${id}/`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
