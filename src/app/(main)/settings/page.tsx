@@ -10,33 +10,73 @@ export default function SettingsPage() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  // خواندن و تغییر ولوم سراسری از پلیر
   const { volume, setVolume } = usePlayer();
-
   const [language, setLanguage] = useState("en");
   const [notifications, setNotifications] = useState("mentions");
 
-  // استیت‌های زبان و نوتیفیکیشن را هم می‌توانیم دائمی کنیم
-  useEffect(() => {
-    const loadPreferences = async () => {
-      const savedLang = localStorage.getItem("app_language");
-      const savedNotif = localStorage.getItem("app_notifications");
+  const [isLoading, setIsLoading] = useState(true);
 
-      if (savedLang) setLanguage(savedLang);
-      if (savedNotif) setNotifications(savedNotif);
+  // 🌟 ۱. دریافت تنظیمات از بک‌اند هنگام لود صفحه
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user) return;
+      try {
+        const token = localStorage.getItem("access_token");
+        const res = await fetch("http://127.0.0.1:8000/accounts/settings/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setLanguage(data.language);
+          setNotifications(data.notifications);
+          setVolume(data.volume);
+          // ذخیره محلی برای دسترسی سریع بقیه بخش‌های اپ (در صورت نیاز)
+          localStorage.setItem("app_language", data.language);
+          localStorage.setItem("app_notifications", data.notifications);
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    loadPreferences();
-  }, []);
+    fetchSettings();
+  }, [user, setVolume]);
+
+  // 🌟 ۲. تابع جامع برای ارسال آپدیت به بک‌اند
+  const updateBackendSetting = async (key: string, value: string | number) => {
+    try {
+      const token = localStorage.getItem("access_token");
+      await fetch("http://127.0.0.1:8000/accounts/settings/", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ [key]: value }),
+      });
+    } catch (error) {
+      console.error(`Failed to update ${key}:`, error);
+    }
+  };
 
   const handleLanguageChange = (val: string) => {
     setLanguage(val);
     localStorage.setItem("app_language", val);
+    updateBackendSetting("language", val); // 👈 ارسال به بک‌اند
   };
 
   const handleNotifChange = (val: string) => {
     setNotifications(val);
     localStorage.setItem("app_notifications", val);
+    updateBackendSetting("notifications", val); // 👈 ارسال به بک‌اند
+  };
+
+  // 🌟 ارسال ولوم به بک‌اند فقط وقتی کاربر دستش رو از روی اسلایدر برداشت
+  const handleVolumeChangeComplete = () => {
+    updateBackendSetting("volume", volume);
   };
 
   if (!user) {
@@ -45,6 +85,14 @@ export default function SettingsPage() {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Please log in to view settings
         </h2>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-32">
+        <div className="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-green-500 opacity-80"></div>
       </div>
     );
   }
@@ -58,17 +106,16 @@ export default function SettingsPage() {
       "Are you absolutely sure you want to delete your account? This action cannot be undone.",
     );
     if (isConfirmed) {
-      alert("حساب کاربری شما با موفقیت حذف شد.");
+      alert("Account deleted successfully.");
       logout();
       router.push("/login");
     }
   };
 
-  // تبدیل ولوم (0 تا 1) به درصد (0 تا 100) برای اسلایدر
   const volumePercentage = Math.round(volume * 100);
 
   return (
-    <div className="flex flex-col gap-8 pb-10 transition-colors max-w-4xl mx-auto w-full">
+    <div className="flex flex-col gap-8 pb-10 transition-colors max-w-4xl mx-auto w-full animate-fade-in">
       <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-4">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           Settings
@@ -83,8 +130,8 @@ export default function SettingsPage() {
             </h2>
             <p className="text-gray-600 dark:text-gray-400 text-sm">
               Currently on the{" "}
-              <span className="font-bold text-green-700 dark:text-green-400">
-                {user.subscription}
+              <span className="font-bold text-green-700 dark:text-green-400 uppercase tracking-wider">
+                {user.subscription || "FREE"}
               </span>{" "}
               plan.
             </p>
@@ -115,7 +162,7 @@ export default function SettingsPage() {
           <select
             value={language}
             onChange={(e) => handleLanguageChange(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
+            className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white cursor-pointer"
           >
             <option value="en">English</option>
             <option value="fa">Persian (فارسی)</option>
@@ -135,7 +182,7 @@ export default function SettingsPage() {
           <select
             value={notifications}
             onChange={(e) => handleNotifChange(e.target.value)}
-            className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
+            className="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white cursor-pointer"
           >
             <option value="all">All Notifications</option>
             <option value="mentions">Important Only</option>
@@ -150,7 +197,7 @@ export default function SettingsPage() {
                 System Default Volume
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Set the default volume level for the application.
+                Set the default volume level across all your devices.
               </p>
             </div>
             <span className="font-bold text-green-600 dark:text-green-400">
@@ -161,9 +208,11 @@ export default function SettingsPage() {
             type="range"
             min="0"
             max="1"
-            step="0.01" // امکان تنظیم دقیق‌تر (مثل 0.85)
+            step="0.01"
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
+            onMouseUp={handleVolumeChangeComplete} // 🌟 آپدیت دیتابیس تو دسکتاپ
+            onTouchEnd={handleVolumeChangeComplete} // 🌟 آپدیت دیتابیس تو موبایل
             className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-600"
           />
         </div>
