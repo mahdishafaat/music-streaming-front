@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // 🌟 این رو اضافه کردیم
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
@@ -38,13 +39,24 @@ export default function Sidebar({ onClose }: SidebarProps) {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800 transition-colors">
       <div className="p-6 flex items-center justify-between">
+        {/* 🌟 بخش هدر سایدبار که آپدیت شد */}
         <Link
           href="/"
           onClick={onClose}
-          className="text-2xl font-bold text-green-600 dark:text-green-500 tracking-tight transition-colors"
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
-          Spotify Clone
+          <Image
+            src="/icon.png"
+            alt="Spotify Clone Logo"
+            width={32}
+            height={32}
+            className="rounded-full shadow-md shrink-0 dark:shadow-black/50"
+          />
+          <span className="text-2xl font-bold text-green-600 dark:text-green-500 tracking-tight transition-colors">
+            Spotify Clone
+          </span>
         </Link>
+
         {/* دکمه بستن فقط در موبایل */}
         <button
           onClick={onClose}
