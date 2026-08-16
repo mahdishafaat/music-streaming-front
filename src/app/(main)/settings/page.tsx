@@ -16,7 +16,7 @@ export default function SettingsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // 🌟 ۱. دریافت تنظیمات از بک‌اند هنگام لود صفحه
+  // دریافت تنظیمات از بک‌اند هنگام لود صفحه
   useEffect(() => {
     const fetchSettings = async () => {
       if (!user) return;
@@ -31,7 +31,6 @@ export default function SettingsPage() {
           setLanguage(data.language);
           setNotifications(data.notifications);
           setVolume(data.volume);
-          // ذخیره محلی برای دسترسی سریع بقیه بخش‌های اپ (در صورت نیاز)
           localStorage.setItem("app_language", data.language);
           localStorage.setItem("app_notifications", data.notifications);
         }
@@ -45,7 +44,7 @@ export default function SettingsPage() {
     fetchSettings();
   }, [user, setVolume]);
 
-  // 🌟 ۲. تابع جامع برای ارسال آپدیت به بک‌اند
+  // تابع جامع برای ارسال آپدیت به بک‌اند
   const updateBackendSetting = async (key: string, value: string | number) => {
     try {
       const token = localStorage.getItem("access_token");
@@ -65,16 +64,15 @@ export default function SettingsPage() {
   const handleLanguageChange = (val: string) => {
     setLanguage(val);
     localStorage.setItem("app_language", val);
-    updateBackendSetting("language", val); // 👈 ارسال به بک‌اند
+    updateBackendSetting("language", val);
   };
 
   const handleNotifChange = (val: string) => {
     setNotifications(val);
     localStorage.setItem("app_notifications", val);
-    updateBackendSetting("notifications", val); // 👈 ارسال به بک‌اند
+    updateBackendSetting("notifications", val);
   };
 
-  // 🌟 ارسال ولوم به بک‌اند فقط وقتی کاربر دستش رو از روی اسلایدر برداشت
   const handleVolumeChangeComplete = () => {
     updateBackendSetting("volume", volume);
   };
@@ -211,8 +209,8 @@ export default function SettingsPage() {
             step="0.01"
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            onMouseUp={handleVolumeChangeComplete} // 🌟 آپدیت دیتابیس تو دسکتاپ
-            onTouchEnd={handleVolumeChangeComplete} // 🌟 آپدیت دیتابیس تو موبایل
+            onMouseUp={handleVolumeChangeComplete}
+            onTouchEnd={handleVolumeChangeComplete}
             className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-600"
           />
         </div>

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { API_BASE_URL } from "@/config/api";
 
 type ArtistAlbum = { id: number; title: string; cover?: string };
 type PublishedMusic = {
@@ -95,14 +96,11 @@ export default function StudioPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_BASE_URL}/music/albums/create/`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        },
-      );
+      const response = await fetch(`${API_BASE_URL}/music/albums/create/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
       if (response.ok) {
         setMessage({ text: "Album created successfully!", type: "success" });
@@ -140,14 +138,11 @@ export default function StudioPage() {
 
     try {
       const token = localStorage.getItem("access_token");
-      const response = await fetch(
-        `${API_BASE_URL}/music/musics/create/`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        },
-      );
+      const response = await fetch(`${API_BASE_URL}/music/musics/create/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
       if (response.ok) {
         setMessage({ text: "Music uploaded successfully!", type: "success" });

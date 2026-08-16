@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL } from "@/config/api";
 
 // ========== TYPES ==========
 type ProfileData = {
@@ -87,16 +87,22 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Daily streams
-  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(null);
+  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(
+    null,
+  );
 
   // Follow stats
   const [followStats, setFollowStats] = useState<FollowStatsData | null>(null);
 
   // Subscription
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null,
+  );
 
   // Artist profile (if role === artist)
-  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(null);
+  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(
+    null,
+  );
   console.log("artistProfile:", artistProfile);
 
   // Edit form state (common)
