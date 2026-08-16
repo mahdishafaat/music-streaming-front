@@ -3,9 +3,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getStorageItem } from "@/utils/storage";
-import { Playlist } from "@/types";
-import PlaylistCard from "@/components/ui/PlaylistCard";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -83,7 +80,6 @@ export default function ProfilePage() {
   const router = useRouter();
 
   // ---- State ----
-  const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
   const [isEditing, setIsEditing] = useState(false);
 
   // Profile data (common)
@@ -91,22 +87,16 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Daily streams
-  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(
-    null,
-  );
+  const [dailyStreams, setDailyStreams] = useState<DailyStreamsData | null>(null);
 
   // Follow stats
   const [followStats, setFollowStats] = useState<FollowStatsData | null>(null);
 
   // Subscription
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(
-    null,
-  );
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
 
   // Artist profile (if role === artist)
-  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(
-    null,
-  );
+  const [artistProfile, setArtistProfile] = useState<ArtistProfileData | null>(null);
   console.log("artistProfile:", artistProfile);
 
   // Edit form state (common)
@@ -192,15 +182,6 @@ export default function ProfilePage() {
       setLoadingProfile(false);
     }
   };
-
-  // ---- Load playlists (from local storage) ----
-  useEffect(() => {
-    const loadPlaylists = async () => {
-      const storedPlaylists = getStorageItem<Playlist[]>("playlists") || [];
-      setUserPlaylists(storedPlaylists);
-    };
-    loadPlaylists();
-  }, []);
 
   // ---- Fetch data when user exists ----
   useEffect(() => {
@@ -364,13 +345,12 @@ export default function ProfilePage() {
 
       const updated = await res.json();
 
-      // آپدیت کردن استیت با دیتای جدید و جلوگیری از کش شدن عکس
+      // Update state with new data and add cache-busting timestamp
       setProfileData((prev) => {
         if (!prev) return updated;
         return {
           ...prev,
           ...updated,
-          // اضافه کردن یک تایم‌استمپ تصادفی به URL عکس تا مرورگر نسخه جدید را اجباراً لود کند
           profile_image: updated.profile_image
             ? `${updated.profile_image}?t=${new Date().getTime()}`
             : prev.profile_image,
@@ -380,7 +360,7 @@ export default function ProfilePage() {
       setIsImageModalOpen(false);
       setSelectedFile(null);
       setImagePreview(null);
-      // alert("Profile image updated successfully!"); // این الرت روی مخ رو هم می‌تونی کامنت کنی
+      // alert("Profile image updated successfully!"); // Optional: comment out
     } catch (err) {
       alert(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -432,7 +412,7 @@ export default function ProfilePage() {
   // Both listeners and artists can edit (but with different fields)
   const isEditable = role === "listener" || role === "artist";
 
-  // 🌟 تابع هوشمند و ضدکِرَش برای ساخت URL عکس پروفایل
+  // ---- Smart function to build valid image URL ----
   const getValidImageUrl = (path: string | null) => {
     if (!path) return null;
     if (path.startsWith("http")) return path;
@@ -442,6 +422,7 @@ export default function ProfilePage() {
   };
 
   const finalProfileImage = getValidImageUrl(profileImage);
+
   // ---- Main Render ----
   return (
     <div className="flex flex-col gap-10 pb-10 transition-colors max-w-6xl mx-auto w-full relative">
@@ -739,43 +720,6 @@ export default function ProfilePage() {
           </Link>
         </div>
       )}
-
-      {/* Playlists Section (unchanged) */}
-      <section>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          Public Playlists
-        </h2>
-
-        {userPlaylists.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-            <svg
-              className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-              ></path>
-            </svg>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-              No playlists yet
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Head over to the playlists tab to create your first mix.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {userPlaylists.map((playlist) => (
-              <PlaylistCard key={playlist.id} playlist={playlist} />
-            ))}
-          </div>
-        )}
-      </section>
 
       {/* Modal: Upload profile image (file input) */}
       {isImageModalOpen && (
