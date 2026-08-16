@@ -1,901 +1,37 @@
-// src/app/(main)/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { API_BASE_URL } from '@/config/api';
+
+// ایمپورت کردن کامپوننت‌های خرد شده
+import ArtistsTab from "./components/ArtistsTab";
+import TicketsTab from "./components/TicketsTab";
+import AuditTab from "./components/AuditTab";
+import SystemTab from "./components/SystemTab";
 
 type Tab = "artists" | "tickets" | "audit" | "system";
-
-// ========== ARTIST REQUEST TYPES ==========
-type RealArtistRequest = {
-  id: number;
-  user_email: string;
-  user_display_name: string;
-  stage_name: string;
-  portfolio: string;
-  status: "pending" | "approved" | "rejected";
-  reason: string;
-  created_at: string;
-};
-
-// ========== TICKET TYPES ==========
-type ApiTicket = {
-  id: number;
-  user: {
-    id: number;
-    email: string;
-    display_name: string;
-  };
-  subject: string;
-  status: "open" | "in_progress" | "resolved" | "closed";
-  created_at: string;
-  updated_at: string;
-};
-
-type ApiMessage = {
-  id: number;
-  ticket: number;
-  sender: {
-    id: number;
-    email: string;
-    display_name: string;
-  };
-  message: string;
-  created_at: string;
-};
-
-// ========== AUDIT TYPE ==========
-type Audit = {
-  artistId: string;
-  name: string;
-  listeners: number;
-  streams: number;
-  reward: number;
-  status: "PENDING" | "SETTLED";
-};
-
-// ========== DASHBOARD STATS ==========
-type DashboardStats = {
-  current_month_revenue: number;
-  active_users: number;
-  subscription_distribution: {
-    base: number;
-    silver: number;
-    gold: number;
-  };
-};
-
-// ========== PRICE MANAGEMENT TYPES ==========
-type PlanPrice = {
-  id: number;
-  duration_months: number;
-  price: string;
-  is_active: boolean;
-};
-
-type Plan = {
-  id: number;
-  name: string;
-  prices: PlanPrice[];
-};
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("artists");
 
-  // ---- Artist requests ----
-  const [artistRequests, setArtistRequests] = useState<RealArtistRequest[]>([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-
-  // ---- Tickets ----
-  const [tickets, setTickets] = useState<ApiTicket[]>([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(false);
-  const [ticketError, setTicketError] = useState<string | null>(null);
-
-  const [activeTicket, setActiveTicket] = useState<ApiTicket | null>(null);
-  const [messages, setMessages] = useState<ApiMessage[]>([]);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [replyText, setReplyText] = useState("");
-
-  // ---- Audit (mock) ----
-  const [audits, setAudits] = useState<Audit[]>([
-    {
-      artistId: "art_1",
-      name: "The Weeknd",
-      listeners: 1200000,
-      streams: 4500000,
-      reward: 4500,
-      status: "PENDING",
-    },
-    {
-      artistId: "art_2",
-      name: "Daft Punk",
-      listeners: 800000,
-      streams: 2100000,
-      reward: 2100,
-      status: "SETTLED",
-    },
-  ]);
-
-  // ---- System Tab Stats ----
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
-  // ---- Price Management ----
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [plansLoading, setPlansLoading] = useState(false);
-  const [updatingPrice, setUpdatingPrice] = useState<{ [key: number]: boolean }>({});
-
-  // ========== API CALLS ==========
-
-  // Fetch artist requests
-  const fetchArtistRequests = async () => {
-    setIsLoadingRequests(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/accounts/artist-requests/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setArtistRequests(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch artist requests", error);
-    } finally {
-      setIsLoadingRequests(false);
-    }
-  };
-
-  // Fetch tickets
-  const fetchTickets = async () => {
-    setIsLoadingTickets(true);
-    setTicketError(null);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(`${API_BASE_URL}/ticket/tickets/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to fetch tickets: ${res.status}`);
-      }
-      const data = await res.json();
-      setTickets(data);
-    } catch (error) {
-      setTicketError(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
-
-  // Fetch messages for a specific ticket
-  const fetchMessages = async (ticketId: number) => {
-    setIsLoadingMessages(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/ticket/tickets/${ticketId}/messages/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!res.ok) {
-        throw new Error(`Failed to fetch messages: ${res.status}`);
-      }
-      const data = await res.json();
-      setMessages(data);
-    } catch (error) {
-      console.error("Error loading messages", error);
-      alert("Could not load messages for this ticket.");
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  };
-
-  // Send reply
-  const sendReply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeTicket) return;
-    if (!replyText.trim()) return;
-
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/ticket/tickets/${activeTicket.id}/messages/create/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ message: replyText.trim() }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Failed to send reply");
-      }
-
-      const newMsg = await res.json();
-      setMessages((prev) => [...prev, newMsg]);
-      setReplyText("");
-      await fetchTickets();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Network error");
-    }
-  };
-
-  // Handle clicking a ticket row
-  const handleTicketClick = (ticket: ApiTicket) => {
-    setActiveTicket(ticket);
-    fetchMessages(ticket.id);
-  };
-
-  // Go back to ticket list
-  const handleBackToTickets = () => {
-    setActiveTicket(null);
-    setMessages([]);
-    setReplyText("");
-  };
-
-  // ---- Fetch Dashboard Stats ----
-  const fetchDashboardStats = async () => {
-    setStatsLoading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/subscriptions/admin/dashboard/stats/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setDashboardStats(data);
-      } else {
-        console.error("Failed to fetch dashboard stats");
-        setDashboardStats(null);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      setDashboardStats(null);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  // ---- Fetch Plans with Prices ----
-  const fetchPlans = async () => {
-    setPlansLoading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/subscriptions/admin/plans/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setPlans(data);
-      } else {
-        console.error("Failed to fetch plans");
-      }
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-    } finally {
-      setPlansLoading(false);
-    }
-  };
-
-  // ---- Handle price change in input ----
-  const handlePriceChange = (planId: number, priceId: number, newPrice: number) => {
-    setPlans((prevPlans) =>
-      prevPlans.map((plan) =>
-        plan.id === planId
-          ? {
-              ...plan,
-              prices: plan.prices.map((price) =>
-                price.id === priceId ? { ...price, price: newPrice.toString() } : price
-              ),
-            }
-          : plan
-      )
-    );
-  };
-
-  // ---- Submit price update ----
-  const handleUpdatePrice = async (priceId: number) => {
-    const priceObj = plans
-      .flatMap((p) => p.prices)
-      .find((p) => p.id === priceId);
-    if (!priceObj) return;
-
-    setUpdatingPrice((prev) => ({ ...prev, [priceId]: true }));
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/subscriptions/admin/subscription-prices/${priceId}/`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ price: parseFloat(priceObj.price) }),
-        }
-      );
-      if (res.ok) {
-        alert("Price updated successfully!");
-        // Optionally refresh plans to reflect any changes from backend
-        await fetchPlans();
-      } else {
-        const error = await res.json().catch(() => ({}));
-        alert(`Failed to update: ${error.detail || "Unknown error"}`);
-      }
-    } catch (error) {
-      console.error("Error updating price:", error);
-      alert("Network error");
-    } finally {
-      setUpdatingPrice((prev) => ({ ...prev, [priceId]: false }));
-    }
-  };
-
-  // ========== ARTIST ACTIONS ==========
-  const handleApproveArtist = async (id: number) => {
-    try {
-      const token = localStorage.getItem("access_token");
-      const res = await fetch(
-        `${API_BASE_URL}/accounts/artist-requests/${id}/`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: "approved" }),
-        }
-      );
-      if (res.ok) {
-        alert("Artist approved successfully!");
-        fetchArtistRequests();
-      } else {
-        alert("Failed to approve artist.");
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Network error.");
-    }
-  };
-
-  const handleRejectArtist = async (id: number) => {
-    const reason = prompt("Please enter the reason for rejection:");
-    if (reason !== null) {
-      try {
-        const token = localStorage.getItem("access_token");
-        const res = await fetch(
-          `${API_BASE_URL}/accounts/artist-requests/${id}/`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ status: "rejected", reason }),
-          }
-        );
-        if (res.ok) {
-          alert(`Request rejected. Reason: ${reason}`);
-          fetchArtistRequests();
-        }
-      } catch (error) {
-        console.error(error);
-        alert("Network error.");
-      }
-    }
-  };
-
-  const handleSettlePayment = (artistId: string) => {
-    setAudits((prev) =>
-      prev.map((audit) =>
-        audit.artistId === artistId ? { ...audit, status: "SETTLED" } : audit
-      )
-    );
-    alert("Settlement approved successfully.");
-  };
-
-  // ========== useEffect ==========
+  // چک کردن سطح دسترسی
   useEffect(() => {
-    const runEffect = async () => {
-      if (user && (user.role === "ADMIN" || user.role === "SUPPORT")) {
-        if (activeTab === "artists") {
-          fetchArtistRequests();
-        } else if (activeTab === "tickets") {
-          await fetchTickets();
-        } else if (activeTab === "system" && user.role === "ADMIN") {
-          await Promise.all([fetchDashboardStats(), fetchPlans()]);
-        }
-      } else if (user) {
+    if (user) {
+      if (user.role !== "ADMIN" && user.role !== "SUPPORT") {
         router.push("/");
       }
-    };
+    }
+  }, [user, router]);
 
-    runEffect();
-  }, [user, router, activeTab]);
-
-  // ========== RENDER HELPERS ==========
+  // تا زمانی که وضعیت لاگین مشخص نشده چیزی نشون نده
   if (!user) return <div className="p-10 text-center">Loading...</div>;
   if (user.role !== "ADMIN" && user.role !== "SUPPORT") return null;
 
   const isAdmin = user.role === "ADMIN";
 
-  // ========== STATUS MAPPING ==========
-  const statusMap = {
-    open: { label: "Open", className: "bg-red-100 text-red-700" },
-    in_progress: { label: "In Progress", className: "bg-yellow-100 text-yellow-700" },
-    resolved: { label: "Resolved", className: "bg-blue-100 text-blue-700" },
-    closed: { label: "Closed", className: "bg-gray-100 text-gray-700" },
-  };
-
-  // ========== TAB RENDERERS ==========
-
-  const renderArtistsTab = () => (
-    <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-        Artist Approval Requests
-      </h2>
-
-      {isLoadingRequests ? (
-        <div className="p-8 text-center text-gray-500">
-          Loading requests from backend...
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-                <th className="p-5 font-medium">User Name</th>
-                <th className="p-5 font-medium">Requested Stage Name</th>
-                <th className="p-5 font-medium">Email</th>
-                <th className="p-5 font-medium">Status</th>
-                <th className="p-5 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {artistRequests.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    No requests found.
-                  </td>
-                </tr>
-              ) : (
-                artistRequests.map((req) => (
-                  <tr
-                    key={req.id}
-                    className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-                  >
-                    <td className="p-5 text-gray-900 dark:text-white">
-                      {req.user_display_name}
-                    </td>
-                    <td className="p-5 font-bold text-gray-900 dark:text-white">
-                      {req.stage_name}
-                    </td>
-                    <td className="p-5 text-gray-600 dark:text-gray-300">
-                      {req.user_email}
-                    </td>
-                    <td className="p-5">
-                      <span
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${
-                          req.status === "pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : req.status === "approved"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {req.status}
-                      </span>
-                    </td>
-                    <td className="p-5 flex justify-end gap-3">
-                      <button
-                        onClick={() => window.open(req.portfolio, "_blank")}
-                        className="px-4 py-2 text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition-colors"
-                      >
-                        Portfolio
-                      </button>
-                      {req.status === "pending" && (
-                        <>
-                          <button
-                            onClick={() => handleApproveArtist(req.id)}
-                            className="px-4 py-2 text-xs font-bold bg-green-50 text-green-600 hover:bg-green-100 rounded-xl transition-colors"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleRejectArtist(req.id)}
-                            className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition-colors"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTicketsTab = () => (
-    <div className="animate-fade-in relative">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-        Support Tickets
-      </h2>
-
-      {activeTicket ? (
-        // ----- TICKET CHAT VIEW -----
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-[600px] shadow-sm">
-          <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-2xl">
-            <div>
-              <h3 className="font-bold text-gray-900 dark:text-white text-lg">
-                Ticket #{activeTicket.id}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                User:{" "}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {activeTicket.user.display_name}
-                </span>{" "}
-                | Subject:{" "}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  {activeTicket.subject}
-                </span>
-              </p>
-            </div>
-            <button
-              onClick={handleBackToTickets}
-              className="px-5 py-2 bg-gray-200 dark:bg-gray-700 rounded-xl text-sm font-bold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            >
-              Go Back
-            </button>
-          </div>
-
-          <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-6">
-            {isLoadingMessages ? (
-              <p className="text-center text-gray-500">Loading messages...</p>
-            ) : messages.length === 0 ? (
-              <p className="text-center text-gray-500">No messages yet.</p>
-            ) : (
-              messages.map((msg) => {
-                const isSender = String(msg.sender.id) === String(user?.id);
-                return (
-                  <div
-                    key={msg.id}
-                    className={`max-w-[80%] p-5 rounded-2xl ${
-                      isSender
-                        ? "self-end bg-green-50 dark:bg-green-900/40 border border-green-100 dark:border-green-800 text-green-900 dark:text-green-100 rounded-tr-none"
-                        : "self-start bg-gray-100 dark:bg-gray-700 rounded-tl-none"
-                    }`}
-                  >
-                    <p className="text-base leading-relaxed">{msg.message}</p>
-                    <span className="text-xs opacity-70 mt-3 block font-medium">
-                      {new Date(msg.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="p-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
-            <form onSubmit={sendReply} className="flex gap-3">
-              <input
-                type="text"
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply here..."
-                className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-5 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 dark:text-white"
-                disabled={activeTicket?.status === "closed"}
-              />
-              <button
-                type="submit"
-                disabled={activeTicket?.status === "closed" || !replyText.trim()}
-                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3.5 rounded-xl font-bold transition-colors shadow-sm"
-              >
-                Send
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        // ----- TICKET LIST VIEW -----
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          {isLoadingTickets ? (
-            <div className="p-8 text-center text-gray-500">Loading tickets...</div>
-          ) : ticketError ? (
-            <div className="p-8 text-center text-red-500">Error: {ticketError}</div>
-          ) : (
-            <table className="w-full text-left border-collapse whitespace-nowrap">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-                  <th className="p-5 font-medium">Ticket ID</th>
-                  <th className="p-5 font-medium">User</th>
-                  <th className="p-5 font-medium">Subject</th>
-                  <th className="p-5 font-medium">Date</th>
-                  <th className="p-5 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-500">
-                      No tickets found.
-                    </td>
-                  </tr>
-                ) : (
-                  tickets.map((tck) => {
-                    const statusInfo = statusMap[tck.status] || statusMap.closed;
-                    return (
-                      <tr
-                        key={tck.id}
-                        onClick={() => handleTicketClick(tck)}
-                        className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-5 font-bold text-gray-900 dark:text-white group-hover:text-green-600 transition-colors">
-                          #{tck.id}
-                        </td>
-                        <td className="p-5 text-gray-600 dark:text-gray-300">
-                          {tck.user.display_name}
-                        </td>
-                        <td className="p-5 text-gray-600 dark:text-gray-300 truncate max-w-[300px]">
-                          {tck.subject}
-                        </td>
-                        <td className="p-5 text-gray-500 text-sm">
-                          {new Date(tck.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="p-5">
-                          <span
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${statusInfo.className}`}
-                          >
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderAuditTab = () => (
-    <div className="animate-fade-in">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-        Artist Financial Audit (Current Month)
-      </h2>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-        <table className="w-full text-left border-collapse whitespace-nowrap">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 text-sm border-b border-gray-200 dark:border-gray-700">
-              <th className="p-5 font-medium">Artist (ID)</th>
-              <th className="p-5 font-medium">Unique Listeners</th>
-              <th className="p-5 font-medium">Total Streams</th>
-              <th className="p-5 font-medium">Calculated Reward</th>
-              <th className="p-5 font-medium">Status</th>
-              <th className="p-5 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audits.map((audit) => (
-              <tr
-                key={audit.artistId}
-                className="border-b border-gray-100 dark:border-gray-750 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-              >
-                <td className="p-5">
-                  <p className="font-bold text-gray-900 dark:text-white">
-                    {audit.name}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">{audit.artistId}</p>
-                </td>
-                <td className="p-5 font-medium text-gray-600 dark:text-gray-300">
-                  {audit.listeners.toLocaleString()}
-                </td>
-                <td className="p-5 font-medium text-gray-600 dark:text-gray-300">
-                  {audit.streams.toLocaleString()}
-                </td>
-                <td className="p-5 font-bold text-green-600 dark:text-green-400 text-lg">
-                  ${audit.reward.toLocaleString()}
-                </td>
-                <td className="p-5">
-                  <span
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide ${
-                      audit.status === "PENDING"
-                        ? "bg-orange-100 text-orange-700"
-                        : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {audit.status === "PENDING" ? "Pending Payment" : "Settled"}
-                  </span>
-                </td>
-                <td className="p-5 text-right">
-                  {audit.status === "PENDING" ? (
-                    <button
-                      onClick={() => handleSettlePayment(audit.artistId)}
-                      className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
-                    >
-                      Approve Settlement
-                    </button>
-                  ) : (
-                    <span className="text-gray-400 text-sm font-bold px-4">
-                      Completed ✓
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  // ========== SYSTEM TAB (with Stats + Price Management) ==========
-  const renderSystemTab = () => {
-    const stats = dashboardStats;
-    const totalSubscribers = stats
-      ? stats.subscription_distribution.base +
-        stats.subscription_distribution.silver +
-        stats.subscription_distribution.gold
-      : 0;
-    const basePct = totalSubscribers
-      ? (stats?.subscription_distribution.base / totalSubscribers) * 100
-      : 0;
-    const silverPct = totalSubscribers
-      ? (stats?.subscription_distribution.silver / totalSubscribers) * 100
-      : 0;
-    const goldPct = totalSubscribers
-      ? (stats?.subscription_distribution.gold / totalSubscribers) * 100
-      : 0;
-
-    return (
-      <div className="animate-fade-in flex flex-col gap-10">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-4">
-          System Settings & Reports
-        </h2>
-
-        {/* Stats Section */}
-        {statsLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading dashboard stats...</div>
-        ) : stats ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white shadow-lg shadow-green-500/20">
-                  <p className="text-sm font-medium text-green-100 mb-2 tracking-wide">
-                    Current Month Revenue
-                  </p>
-                  <h4 className="text-4xl font-black break-all">
-                    {stats.current_month_revenue.toLocaleString()} Rials
-                  </h4>
-                </div>
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20">
-                  <p className="text-sm font-medium text-blue-100 mb-2 tracking-wide">
-                    Active Users
-                  </p>
-                  <h4 className="text-4xl font-black">
-                    {stats.active_users.toLocaleString()}
-                  </h4>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex items-center justify-between h-full">
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-5 text-lg">
-                  Subscription Distribution
-                </h3>
-                <ul className="text-sm flex flex-col gap-3 font-medium">
-                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                    <span className="w-4 h-4 rounded-full bg-gray-400"></span>{" "}
-                    Base Plan ({Math.round(basePct)}%)
-                  </li>
-                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                    <span className="w-4 h-4 rounded-full bg-blue-500 shadow-sm"></span>{" "}
-                    Silver Plan ({Math.round(silverPct)}%)
-                  </li>
-                  <li className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                    <span className="w-4 h-4 rounded-full bg-yellow-500 shadow-sm"></span>{" "}
-                    Gold Plan ({Math.round(goldPct)}%)
-                  </li>
-                </ul>
-              </div>
-              <div
-                className="w-40 h-40 rounded-full shadow-inner border-[6px] border-white dark:border-gray-800"
-                style={{
-                  background: `conic-gradient(#3B82F6 0% ${silverPct}%, #EAB308 ${silverPct}% ${
-                    silverPct + goldPct
-                  }%, #9CA3AF ${silverPct + goldPct}% 100%)`,
-                }}
-              ></div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-red-500">Failed to load stats.</div>
-        )}
-
-        {/* Price Management Section (Admin only) */}
-        {isAdmin && (
-          <section className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-8">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Manage Subscription Prices
-            </h3>
-            {plansLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading plans...</div>
-            ) : plans.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {plans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm"
-                  >
-                    <h4 className="font-bold text-gray-900 dark:text-white text-lg mb-2">
-                      {plan.name}
-                    </h4>
-                    <div className="space-y-3">
-                      {plan.prices.map((price) => (
-                        <div key={price.id} className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[65px]">
-                            {price.is_active ? "Active" : "Inactive"}
-                          </span>
-                          <span className="text-sm text-gray-600 dark:text-gray-300 min-w-[45px]">
-                            {price.duration_months}m
-                          </span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={parseFloat(price.price)}
-                            onChange={(e) =>
-                              handlePriceChange(plan.id, price.id, parseFloat(e.target.value))
-                            }
-                            className="w-24 px-2 py-1 border rounded dark:bg-gray-700 dark:border-gray-600 text-sm"
-                          />
-                          <button
-                            onClick={() => handleUpdatePrice(price.id)}
-                            disabled={updatingPrice[price.id]}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded text-sm transition-colors"
-                          >
-                            {updatingPrice[price.id] ? "Saving..." : "Update"}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 text-center text-gray-500">No plans found.</div>
-            )}
-          </section>
-        )}
-      </div>
-    );
-  };
-
-  // ========== MAIN LAYOUT ==========
   return (
     <div className="flex flex-col md:flex-row min-h-[80vh] gap-10 transition-colors max-w-7xl mx-auto w-full pb-12">
       <aside className="w-full md:w-72 flex-shrink-0 flex flex-col gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 rounded-3xl h-fit sticky top-6 shadow-sm">
@@ -919,7 +55,12 @@ export default function DashboardPage() {
               : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -938,7 +79,12 @@ export default function DashboardPage() {
               : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           }`}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -961,7 +107,12 @@ export default function DashboardPage() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -980,7 +131,12 @@ export default function DashboardPage() {
                   : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1001,10 +157,11 @@ export default function DashboardPage() {
       </aside>
 
       <main className="flex-1 min-w-0">
-        {activeTab === "artists" && renderArtistsTab()}
-        {activeTab === "tickets" && renderTicketsTab()}
-        {isAdmin && activeTab === "audit" && renderAuditTab()}
-        {isAdmin && activeTab === "system" && renderSystemTab()}
+        {/* رندر کردن کامپوننت متناسب با تب انتخابی */}
+        {activeTab === "artists" && <ArtistsTab />}
+        {activeTab === "tickets" && <TicketsTab />}
+        {isAdmin && activeTab === "audit" && <AuditTab />}
+        {isAdmin && activeTab === "system" && <SystemTab />}
       </main>
     </div>
   );
