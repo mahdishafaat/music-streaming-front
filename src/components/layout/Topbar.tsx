@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getStorageItem } from "@/utils/storage";
 import { Notification } from "@/types";
+import { API_BASE_URL } from '@/config/api';
 
 export default function Topbar() {
   const { user } = useAuth();
@@ -52,7 +53,7 @@ export default function Topbar() {
         const token = localStorage.getItem("access_token");
         if (!token) return;
 
-        const res = await fetch("http://127.0.0.1:8000/accounts/profile/me/", {
+        const res = await fetch(`${API_BASE_URL}/accounts/profile/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -91,7 +92,7 @@ export default function Topbar() {
     // اطمینان از وجود فقط یک اسلش در ابتدای مسیر (حل باگ 8000media)
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
 
-    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+    return `${API_BASE_URL}${prefix}${normalizedPath}`;
   };
 
   const finalProfileImage = getValidImageUrl(profileImage);

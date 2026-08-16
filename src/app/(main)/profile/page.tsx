@@ -9,6 +9,7 @@ import PlaylistCard from "@/components/ui/PlaylistCard";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_BASE_URL } from '@/config/api';
 
 // ========== TYPES ==========
 type ProfileData = {
@@ -138,16 +139,16 @@ export default function ProfilePage() {
     setLoadingProfile(true);
     try {
       const [profileRes, streamsRes, followRes, subRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/accounts/profile/me/", {
+        fetch(`${API_BASE_URL}/accounts/profile/me/`, {
           headers: getHeaders(),
         }),
-        fetch("http://127.0.0.1:8000/accounts/me/daily-streams/", {
+        fetch(`${API_BASE_URL}/accounts/me/daily-streams/`, {
           headers: getHeaders(),
         }),
-        fetch("http://127.0.0.1:8000/accounts/users/me/follow-stats/", {
+        fetch(`${API_BASE_URL}/accounts/users/me/follow-stats/`, {
           headers: getHeaders(),
         }),
-        fetch("http://127.0.0.1:8000/subscriptions/me/subscription/", {
+        fetch(`${API_BASE_URL}/subscriptions/me/subscription/`, {
           headers: getHeaders(),
         }),
       ]);
@@ -173,7 +174,7 @@ export default function ProfilePage() {
       // If user is artist, fetch artist profile
       if (profileData.role === "artist") {
         const artistRes = await fetch(
-          "http://127.0.0.1:8000/accounts/artist/profile/me/",
+          `${API_BASE_URL}/accounts/artist/profile/me/`,
           {
             headers: getHeaders(),
           },
@@ -217,9 +218,9 @@ export default function ProfilePage() {
   // ---- Determine which endpoint to use ----
   const getUpdateEndpoint = () => {
     if (profileData?.role === "artist") {
-      return "http://127.0.0.1:8000/accounts/profile/artist/update/";
+      return `${API_BASE_URL}/accounts/profile/artist/update/`;
     }
-    return "http://127.0.0.1:8000/accounts/profile/update/";
+    return `${API_BASE_URL}/accounts/profile/update/`;
   };
 
   // ---- Update profile (display name + artist fields) ----
@@ -437,7 +438,7 @@ export default function ProfilePage() {
     if (path.startsWith("http")) return path;
     const normalizedPath = path.replace(/\\/g, "/");
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
-    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+    return `${API_BASE_URL}${prefix}${normalizedPath}`;
   };
 
   const finalProfileImage = getValidImageUrl(profileImage);

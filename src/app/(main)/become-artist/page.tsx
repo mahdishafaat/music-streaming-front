@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from '@/config/api';
 
 export default function BecomeArtistPage() {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ export default function BecomeArtistPage() {
       const token = localStorage.getItem("access_token");
 
       const response = await fetch(
-        "http://127.0.0.1:8000/accounts/artist-request/",
+        `${API_BASE_URL}/accounts/artist-request/`,
         {
           method: "POST",
           headers: {

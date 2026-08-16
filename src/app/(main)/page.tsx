@@ -8,6 +8,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { Album, Song } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
+import { API_BASE_URL } from '@/config/api';
 
 // ========== TYPES ==========
 interface ApiArtist {
@@ -81,7 +82,7 @@ export default function HomePage() {
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "/default-cover.png";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path}`;
+    return `${API_BASE_URL}${path}`;
   };
 
   const getHeaders = (): HeadersInit => {
@@ -102,11 +103,11 @@ export default function HomePage() {
         }
 
         let [musicRes, albumRes] = await Promise.all([
-          fetch("http://127.0.0.1:8000/music/musics/", {
+          fetch(`${API_BASE_URL}/music/musics/`, {
             headers,
             cache: "no-store",
           }),
-          fetch("http://127.0.0.1:8000/music/albums/", {
+          fetch(`${API_BASE_URL}/music/albums/`, {
             headers,
             cache: "no-store",
           }),
@@ -115,8 +116,8 @@ export default function HomePage() {
         // If unauthorized, try public access
         if (musicRes.status === 401 || albumRes.status === 401) {
           const publicRes = await Promise.all([
-            fetch("http://127.0.0.1:8000/music/musics/", { cache: "no-store" }),
-            fetch("http://127.0.0.1:8000/music/albums/", { cache: "no-store" }),
+            fetch(`${API_BASE_URL}/music/musics/`, { cache: "no-store" }),
+            fetch(`${API_BASE_URL}/music/albums/`, { cache: "no-store" }),
           ]);
           musicRes = publicRes[0];
           albumRes = publicRes[1];
@@ -179,7 +180,7 @@ export default function HomePage() {
       }
       try {
         const res = await fetch(
-          "http://127.0.0.1:8000/subscriptions/me/subscription/",
+          `${API_BASE_URL}/subscriptions/me/subscription/`,
           {
             headers: getHeaders(),
           },

@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { API_BASE_URL } from '@/config/api';
 // ---------- Types ----------
 interface Plan {
   id: number;
@@ -44,7 +44,7 @@ export default function SubscriptionsPage() {
       try {
         setLoading(true);
         // Change this URL according to your API base path
-        const res = await fetch(`http://127.0.0.1:8000/subscriptions/prices/`, {
+        const res = await fetch(`${API_BASE_URL}/subscriptions/prices/`, {
           headers: getHeaders(),
         });
 
@@ -88,7 +88,7 @@ export default function SubscriptionsPage() {
   const handleSelectPrice = async (priceId: number) => {
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/subscriptions/payments/create/",
+        `${API_BASE_URL}/subscriptions/payments/create/`,
         {
           method: "POST",
           headers: getHeaders(),

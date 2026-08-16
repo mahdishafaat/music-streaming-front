@@ -4,6 +4,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Playlist } from "@/types";
+import { API_BASE_URL } from '@/config/api';
 
 interface CreatePlaylistModalProps {
   isOpen: boolean;
@@ -58,7 +59,7 @@ export default function CreatePlaylistModal({
         formData.append("cover", imageFile);
       }
 
-      const res = await fetch("http://127.0.0.1:8000/music/playlists/", {
+      const res = await fetch(`${API_BASE_URL}/music/playlists/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -73,7 +74,7 @@ export default function CreatePlaylistModal({
         const finalCoverUrl = data.cover
           ? data.cover.startsWith("http")
             ? data.cover
-            : `http://127.0.0.1:8000${data.cover}`
+            : `${API_BASE_URL}${data.cover}`
           : undefined;
 
         onSuccess({

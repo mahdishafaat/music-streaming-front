@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { API_BASE_URL } from '@/config/api';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function RegisterPage() {
     try {
       // ارسال درخواست به اندپوینت بک‌اند
       const response = await fetch(
-        "http://127.0.0.1:8000/accounts/register/listener/",
+        `${API_BASE_URL}/accounts/register/listener/`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

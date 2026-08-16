@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-
+import { API_BASE_URL } from '@/config/api';
 // ========== TYPES ==========
 type Ticket = {
   id: number;
@@ -74,7 +74,7 @@ export default function TicketsPage() {
     setLoadingTickets(true);
     setError(null);
     try {
-      const res = await fetch("http://127.0.0.1:8000/ticket/users/tickets/", {
+      const res = await fetch(`${API_BASE_URL}/ticket/users/tickets/`, {
         headers: getHeaders(),
       });
       if (!res.ok) throw new Error("Failed to load tickets");
@@ -92,7 +92,7 @@ export default function TicketsPage() {
     setLoadingMessages(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/ticket/users/tickets/${ticketId}/messages/`,
+        `${API_BASE_URL}/ticket/users/tickets/${ticketId}/messages/`,
         { headers: getHeaders() }
       );
       if (!res.ok) throw new Error("Failed to load messages");
@@ -113,7 +113,7 @@ export default function TicketsPage() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/ticket/tickets/${activeTicket.id}/messages/create/`,
+        `${API_BASE_URL}/ticket/tickets/${activeTicket.id}/messages/create/`,
         {
           method: "POST",
           headers: getHeaders(),
@@ -144,7 +144,7 @@ export default function TicketsPage() {
     setCreating(true);
     try {
       // First, create the ticket
-      const res = await fetch("http://127.0.0.1:8000/ticket/tickets/create/", {
+      const res = await fetch(`${API_BASE_URL}/ticket/tickets/create/`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ subject: newSubject.trim() }),
@@ -158,7 +158,7 @@ export default function TicketsPage() {
       // If an initial message was provided, send it
       if (newMessage.trim()) {
         const msgRes = await fetch(
-          `http://127.0.0.1:8000/ticket/tickets/${newTicket.id}/messages/`,
+          `${API_BASE_URL}/ticket/tickets/${newTicket.id}/messages/`,
           {
             method: "POST",
             headers: getHeaders(),

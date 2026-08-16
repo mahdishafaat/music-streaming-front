@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-
+import { API_BASE_URL } from '@/config/api';
 // تایپ برای دریافت آلبوم‌های خود هنرمند تا بتونه موزیک رو بهشون وصل کنه
 type ArtistAlbum = { id: number; title: string };
 
@@ -31,7 +31,7 @@ export default function StudioPage() {
         try {
           const token = localStorage.getItem("access_token");
           // تغییر مسیر به اندپوینت جدید
-          const res = await fetch("http://127.0.0.1:8000/music/my-albums/", {
+          const res = await fetch(`${API_BASE_URL}/music/my-albums/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
@@ -60,7 +60,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        "http://127.0.0.1:8000/music/albums/create/",
+        `${API_BASE_URL}/music/albums/create/`,
         {
           method: "POST",
           headers: {
@@ -106,7 +106,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        "http://127.0.0.1:8000/music/musics/create/",
+        `${API_BASE_URL}/music/musics/create/`,
         {
           method: "POST",
           headers: {
