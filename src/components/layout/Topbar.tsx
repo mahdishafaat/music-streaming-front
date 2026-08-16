@@ -10,7 +10,11 @@ import Image from "next/image";
 import { getStorageItem } from "@/utils/storage";
 import { Notification } from "@/types";
 
-export default function Topbar() {
+interface TopbarProps {
+  onOpenMenu?: () => void;
+}
+
+export default function Topbar({ onOpenMenu }: TopbarProps) {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,7 +33,6 @@ export default function Topbar() {
     syncQuery();
   }, [searchParams]);
 
-  // خواندن تعداد اعلانات خوانده نشده
   useEffect(() => {
     const fetchNotifications = () => {
       const notifs = getStorageItem<Notification[]>("notifications") || [];
@@ -40,12 +43,9 @@ export default function Topbar() {
       setUnreadCount(unread);
     };
 
-    if (user) {
-      fetchNotifications();
-    }
+    if (user) fetchNotifications();
   }, [user, pathname]);
 
-  // واکشی عکس پروفایل به صورت زنده از بک‌اند
   useEffect(() => {
     const fetchProfileImage = async () => {
       try {
@@ -65,9 +65,7 @@ export default function Topbar() {
       }
     };
 
-    if (user) {
-      fetchProfileImage();
-    }
+    if (user) fetchProfileImage();
   }, [user, pathname]);
 
   const handleSearchChange = (value: string) => {
@@ -79,31 +77,44 @@ export default function Topbar() {
     }
   };
 
-  // 🌟 تابع هوشمند و ضدکِرَش برای ساخت URL عکس
   const getValidImageUrl = (path: string | null) => {
     if (!path) return null;
-    // اگر از قبل آدرس کامل بود (http داشت)، خودش رو برگردون
     if (path.startsWith("http")) return path;
-
-    // جایگزینی بک‌اسلش‌های ویندوز با اسلش معمولی (حل باگ ویندوز)
     const normalizedPath = path.replace(/\\/g, "/");
-
-    // اطمینان از وجود فقط یک اسلش در ابتدای مسیر (حل باگ 8000media)
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
-
     return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
   };
 
   const finalProfileImage = getValidImageUrl(profileImage);
 
   return (
-    <div className="h-full px-6 flex items-center justify-between transition-colors bg-transparent gap-4">
-      <div className="flex-1 hidden md:block"></div>
+    <div className="h-full px-4 md:px-6 flex items-center justify-between transition-colors bg-transparent gap-2 md:gap-4 w-full">
+      {/* دکمه همبرگری برای موبایل */}
+      <button
+        onClick={onOpenMenu}
+        className="md:hidden p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M4 6h16M4 12h16M4 18h16"
+          />
+        </svg>
+      </button>
 
-      <div className="w-full max-w-md relative flex-shrink-0">
+      <div className="flex-1 hidden lg:block"></div>
+
+      <div className="w-full max-w-md relative shrink">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4 md:w-5 md:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -117,28 +128,28 @@ export default function Topbar() {
         </div>
         <input
           type="text"
-          placeholder="What do you want to listen to?"
+          placeholder="Listen to..."
           value={query}
           onChange={(e) => handleSearchChange(e.target.value)}
           onFocus={() => {
             if (pathname !== "/search") router.push("/search");
           }}
-          // تغییرات UI: رنگ پس‌زمینه تیره‌تر در دارک‌مود و رنگ متن سفیدتر
-          className="w-full pl-10 pr-4 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800/80 border border-transparent dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:border-green-500 dark:focus:border-green-500 transition-all text-sm shadow-inner"
+          className="w-full pl-9 md:pl-10 pr-3 md:pr-4 py-2 md:py-2.5 rounded-full bg-gray-100 dark:bg-gray-800/80 border border-transparent dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:border-green-500 dark:focus:border-green-500 transition-all text-sm shadow-inner"
         />
       </div>
 
-      <div className="flex-1 flex items-center justify-end gap-5 flex-shrink-0">
-        <ThemeToggle />
+      <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0">
+        <div className="hidden sm:block">
+          <ThemeToggle />
+        </div>
 
-        {/* آیکون زنگوله اعلانات */}
         {user && (
           <Link
             href="/notifications"
             className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition-colors"
           >
             <svg
-              className="w-6 h-6"
+              className="w-5 h-5 md:w-6 md:h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -151,7 +162,7 @@ export default function Topbar() {
               />
             </svg>
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border border-white dark:border-gray-900">
+              <span className="absolute top-1 right-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-red-500 text-white text-[9px] md:text-[10px] font-bold flex items-center justify-center rounded-full border border-white dark:border-gray-900">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -159,14 +170,14 @@ export default function Topbar() {
         )}
 
         <div
-          className="flex items-center gap-3 cursor-pointer"
+          className="flex items-center gap-2 md:gap-3 cursor-pointer"
           onClick={() => router.push("/profile")}
         >
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden lg:block">
             {user?.displayName || "Guest"}
           </span>
 
-          <div className="relative w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-bold text-sm border border-green-200 dark:border-green-800 overflow-hidden">
+          <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center font-bold text-sm border border-green-200 dark:border-green-800 overflow-hidden">
             {finalProfileImage && !imgError ? (
               <Image
                 src={finalProfileImage}
