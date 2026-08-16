@@ -25,10 +25,18 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const hasDashboardAccess = user?.role === "ADMIN" || user?.role === "SUPPORT";
   const hasStudioAccess = user?.role === "ARTIST";
 
+  // Build navigation items
   const navItems = [...baseNavItems];
 
   if (hasStudioAccess) {
     navItems.push({ name: "Studio", path: "/studio" });
+  }
+
+  // Add "Rooms" – available to all authenticated users (optional: only listeners?)
+  // We'll add it for everyone who is logged in.
+  if (user) {
+    // Insert before Dashboard or at the end
+    navItems.push({ name: "Rooms", path: "/rooms" });
   }
 
   if (hasDashboardAccess) {
@@ -45,7 +53,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         >
           Spotify Clone
         </Link>
-        {/* دکمه بستن فقط در موبایل */}
+        {/* Close button only on mobile */}
         <button
           onClick={onClose}
           className="md:hidden p-2 -mr-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -76,7 +84,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             <Link
               key={item.name}
               href={item.path}
-              onClick={onClose} // بستن منو بعد از کلیک روی لینک
+              onClick={onClose}
               className={`block px-4 py-3 rounded-xl font-medium transition-colors ${
                 isActive
                   ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
