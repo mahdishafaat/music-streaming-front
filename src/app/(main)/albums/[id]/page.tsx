@@ -7,7 +7,7 @@ import Image from "next/image";
 import { usePlayer } from "@/context/PlayerContext";
 import SongCard from "@/components/ui/SongCard";
 import { Song } from "@/types";
-
+import { API_BASE_URL } from '@/config/api';
 interface ApiArtist {
   id: number;
   stage_name: string;
@@ -49,7 +49,7 @@ export default function AlbumDetailsPage() {
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "/default-cover.png";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path}`;
+    return `${API_BASE_URL}${path}`;
   };
 
   useEffect(() => {
@@ -61,13 +61,13 @@ export default function AlbumDetailsPage() {
           headers["Authorization"] = `Bearer ${token}`;
         }
 
-        let res = await fetch(`http://127.0.0.1:8000/music/albums/${id}/`, {
+        let res = await fetch(`${API_BASE_URL}/music/albums/${id}/`, {
           headers,
           cache: "no-store",
         });
 
         if (res.status === 401) {
-          res = await fetch(`http://127.0.0.1:8000/music/albums/${id}/`, {
+          res = await fetch(`${API_BASE_URL}/music/albums/${id}/`, {
             cache: "no-store",
           });
         }

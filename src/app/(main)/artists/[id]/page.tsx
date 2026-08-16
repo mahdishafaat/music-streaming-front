@@ -9,6 +9,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import { Album, Song } from "@/types";
 import AlbumCard from "@/components/ui/AlbumCard";
 import SongCard from "@/components/ui/SongCard";
+import { API_BASE_URL } from '@/config/api';
 
 // ========== TYPES ==========
 interface ApiArtistBasic {
@@ -95,7 +96,7 @@ export default function ArtistProfilePage() {
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path}`;
+    return `${API_BASE_URL}${path}`;
   };
 
   const getHeaders = (): HeadersInit => {
@@ -109,7 +110,7 @@ export default function ArtistProfilePage() {
   const fetchFollowStats = async (userId: number) => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/accounts/users/${userId}/follow-stats/`,
+        `${API_BASE_URL}/accounts/users/${userId}/follow-stats/`,
         { headers: getHeaders() },
       );
       if (res.ok) {
@@ -126,7 +127,7 @@ export default function ArtistProfilePage() {
   const fetchFollowStatus = async (userId: number) => {
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/accounts/me/follows/${userId}/`,
+        `${API_BASE_URL}/accounts/me/follows/${userId}/`,
         { headers: getHeaders() },
       );
       if (res.ok) {
@@ -143,7 +144,7 @@ export default function ArtistProfilePage() {
     const fetchArtistData = async () => {
       try {
         const res = await fetch(
-          `http://127.0.0.1:8000/accounts/artists/${id}/`,
+          `${API_BASE_URL}/accounts/artists/${id}/`,
           {
             headers: getHeaders(),
             cache: "no-store",
@@ -203,7 +204,7 @@ export default function ArtistProfilePage() {
       setSubscriptionLoading(true);
       try {
         const subRes = await fetch(
-          "http://127.0.0.1:8000/subscriptions/me/subscription/",
+          `${API_BASE_URL}/subscriptions/me/subscription/`,
           {
             headers: getHeaders(),
           },
@@ -215,7 +216,7 @@ export default function ArtistProfilePage() {
           if (subData.plan.can_view_statistics) {
             setStatsLoading(true);
             const statsRes = await fetch(
-              `http://127.0.0.1:8000/music/artists/${id}/statistics/`,
+              `${API_BASE_URL}/music/artists/${id}/statistics/`,
               { headers: getHeaders() },
             );
             if (statsRes.ok) {
@@ -250,7 +251,7 @@ export default function ArtistProfilePage() {
     try {
       if (isFollowing) {
         const res = await fetch(
-          `http://127.0.0.1:8000/accounts/unfollow/?display_name=${artist.user_display_name}`,
+          `${API_BASE_URL}/accounts/unfollow/?display_name=${artist.user_display_name}`,
           {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },
@@ -261,7 +262,7 @@ export default function ArtistProfilePage() {
           setFollowersCount((prev) => (prev !== null ? prev - 1 : prev));
         }
       } else {
-        const res = await fetch("http://127.0.0.1:8000/accounts/follow/", {
+        const res = await fetch(`${API_BASE_URL}/accounts/follow/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

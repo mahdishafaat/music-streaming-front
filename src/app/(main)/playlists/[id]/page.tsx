@@ -7,6 +7,7 @@ import { Playlist, Song } from "@/types";
 import SongCard from "@/components/ui/SongCard";
 import { usePlayer } from "@/context/PlayerContext";
 import Image from "next/image";
+import { API_BASE_URL } from '@/config/api';
 
 interface ApiArtist {
   id: number;
@@ -62,7 +63,7 @@ export default function PlaylistDetailsPage() {
   const getFullUrl = (path?: string | null): string => {
     if (!path) return "/default-cover.png";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000${path}`;
+    return `${API_BASE_URL}${path}`;
   };
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function PlaylistDetailsPage() {
         }
 
         const res = await fetch(
-          `http://127.0.0.1:8000/music/playlists/${playlistId}/`,
+          `${API_BASE_URL}/music/playlists/${playlistId}/`,
           {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
@@ -98,7 +99,7 @@ export default function PlaylistDetailsPage() {
           const finalCoverUrl = data.cover
             ? data.cover.startsWith("http")
               ? data.cover
-              : `http://127.0.0.1:8000${data.cover}`
+              : `${API_BASE_URL}${data.cover}`
             : undefined;
 
           setPlaylist({
@@ -150,7 +151,7 @@ export default function PlaylistDetailsPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/music/playlists/${playlistId}/delete/`,
+        `${API_BASE_URL}/music/playlists/${playlistId}/delete/`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -178,7 +179,7 @@ export default function PlaylistDetailsPage() {
       formData.append("name", editName.trim());
 
       const res = await fetch(
-        `http://127.0.0.1:8000/music/playlists/${playlistId}/update/`,
+        `${API_BASE_URL}/music/playlists/${playlistId}/update/`,
         {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
@@ -211,7 +212,7 @@ export default function PlaylistDetailsPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/music/playlists/${playlistId}/remove-music/`,
+        `${API_BASE_URL}/music/playlists/${playlistId}/remove-music/`,
         {
           method: "DELETE",
           headers: {

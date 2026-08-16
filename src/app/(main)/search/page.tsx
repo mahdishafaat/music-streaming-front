@@ -7,6 +7,7 @@ import SongCard from "@/components/ui/SongCard";
 import AlbumCard from "@/components/ui/AlbumCard";
 import Image from "next/image";
 import Link from "next/link";
+import { API_BASE_URL } from '@/config/api';
 
 // ========== TYPES ==========
 interface SearchArtist {
@@ -74,7 +75,7 @@ const toAlbumType = (apiAlbum: SearchAlbum) => ({
   artistName: apiAlbum.artist_name || "Various Artists",
   coverImage: apiAlbum.cover?.startsWith("http")
     ? apiAlbum.cover
-    : `http://127.0.0.1:8000${apiAlbum.cover}`,
+    : `${API_BASE_URL}${apiAlbum.cover}`,
   releaseDate: apiAlbum.release_date,
   songIds: [],
 });
@@ -109,7 +110,7 @@ export default function SearchPage() {
     if (path.startsWith("http")) return path;
     const normalizedPath = path.replace(/\\/g, "/");
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
-    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+    return `${API_BASE_URL}${prefix}${normalizedPath}`;
   };
 
   // ---- Fetch search results ----
@@ -125,7 +126,7 @@ export default function SearchPage() {
       setHasSearched(true);
 
       try {
-        const url = new URL("http://127.0.0.1:8000/music/search/");
+        const url = new URL(`${API_BASE_URL}/music/search/`);
         url.searchParams.append("q", searchQuery.trim());
         url.searchParams.append("sort", sort);
         url.searchParams.append("limit", "20");

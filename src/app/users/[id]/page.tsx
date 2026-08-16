@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from '@/config/api';
 
 interface ApiUserDetail {
   id: number;
@@ -29,7 +30,7 @@ export default function UserProfilePage() {
     if (path.startsWith("http")) return path;
     const normalizedPath = path.replace(/\\/g, "/");
     const prefix = normalizedPath.startsWith("/") ? "" : "/";
-    return `http://127.0.0.1:8000${prefix}${normalizedPath}`;
+    return `${API_BASE_URL}${prefix}${normalizedPath}`;
   };
 
   const getHeaders = (): HeadersInit => {
@@ -40,7 +41,7 @@ export default function UserProfilePage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/accounts/users/${id}/`, {
+        const res = await fetch(`${API_BASE_URL}/accounts/users/${id}/`, {
           headers: getHeaders(),
           cache: "no-store",
         });
@@ -50,7 +51,7 @@ export default function UserProfilePage() {
 
         // Fetch follow stats
         const statsRes = await fetch(
-          `http://127.0.0.1:8000/accounts/users/${id}/follow-stats/`,
+          `${API_BASE_URL}/accounts/users/${id}/follow-stats/`,
           {
             headers: getHeaders(),
           },
@@ -64,7 +65,7 @@ export default function UserProfilePage() {
         // Fetch follow status if logged in
         if (user) {
           const statusRes = await fetch(
-            `http://127.0.0.1:8000/accounts/me/follows/${id}/`,
+            `${API_BASE_URL}/accounts/me/follows/${id}/`,
             {
               headers: getHeaders(),
             },
@@ -95,7 +96,7 @@ export default function UserProfilePage() {
     try {
       if (isFollowing) {
         const res = await fetch(
-          `http://127.0.0.1:8000/accounts/unfollow/?display_name=${profileUser.display_name}`,
+          `${API_BASE_URL}/accounts/unfollow/?display_name=${profileUser.display_name}`,
           {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },
@@ -106,7 +107,7 @@ export default function UserProfilePage() {
           setFollowersCount((prev) => (prev !== null ? prev - 1 : prev));
         }
       } else {
-        const res = await fetch("http://127.0.0.1:8000/accounts/follow/", {
+        const res = await fetch(`${API_BASE_URL}/accounts/follow/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Playlist } from "@/types";
 import PlaylistCard from "@/components/ui/PlaylistCard";
 import CreatePlaylistModal from "@/components/ui/CreatePlaylistModal";
-
+import { API_BASE_URL } from '@/config/api';
 interface ApiPlaylist {
   id: number;
   name: string;
@@ -28,7 +28,7 @@ export default function PlaylistsPage() {
           return;
         }
 
-        const res = await fetch("http://127.0.0.1:8000/music/my-playlists/", {
+        const res = await fetch(`${API_BASE_URL}/music/my-playlists/`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         });
@@ -40,7 +40,7 @@ export default function PlaylistsPage() {
             const finalCoverUrl = p.cover
               ? p.cover.startsWith("http")
                 ? p.cover
-                : `http://127.0.0.1:8000${p.cover}`
+                : `${API_BASE_URL}${p.cover}`
               : undefined;
 
             return {

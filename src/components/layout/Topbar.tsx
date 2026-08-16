@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getStorageItem } from "@/utils/storage";
 import { Notification } from "@/types";
+import { API_BASE_URL } from '@/config/api';
 
 interface TopbarProps {
   onOpenMenu?: () => void;
@@ -52,7 +53,7 @@ export default function Topbar({ onOpenMenu }: TopbarProps) {
         const token = localStorage.getItem("access_token");
         if (!token) return;
 
-        const res = await fetch("http://127.0.0.1:8000/accounts/profile/me/", {
+        const res = await fetch(`${API_BASE_URL}/accounts/profile/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

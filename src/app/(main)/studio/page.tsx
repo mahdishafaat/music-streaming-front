@@ -96,7 +96,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        "http://127.0.0.1:8000/music/albums/create/",
+        `${API_BASE_URL}/music/albums/create/`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
@@ -141,7 +141,7 @@ export default function StudioPage() {
     try {
       const token = localStorage.getItem("access_token");
       const response = await fetch(
-        "http://127.0.0.1:8000/music/musics/create/",
+        `${API_BASE_URL}/music/musics/create/`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/context/AuthContext";
 import AddToPlaylistModal from "@/components/ui/AddToPlaylistModal";
+import { API_BASE_URL } from '@/config/api';
 
 export default function MusicPlayer() {
   const {
@@ -67,7 +68,7 @@ export default function MusicPlayer() {
           const token = localStorage.getItem("access_token");
           if (!token) return;
           await fetch(
-            `http://127.0.0.1:8000/music/musics/${currentSong.id}/stream/`,
+            `${API_BASE_URL}/music/musics/${currentSong.id}/stream/`,
             {
               method: "POST",
               headers: { Authorization: `Bearer ${token}` },
@@ -112,7 +113,7 @@ export default function MusicPlayer() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/music/musics/${currentSong?.id}/like/`,
+        `${API_BASE_URL}/music/musics/${currentSong?.id}/like/`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },

@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Song } from "@/types";
+import { API_BASE_URL } from '@/config/api';
 
 interface Playlist {
   id: string | number;
@@ -36,7 +37,7 @@ export default function AddToPlaylistModal({
             return;
           }
 
-          const res = await fetch("http://127.0.0.1:8000/music/my-playlists/", {
+          const res = await fetch(`${API_BASE_URL}/music/my-playlists/`, {
             headers: { Authorization: `Bearer ${token}` },
             cache: "no-store",
           });
@@ -68,7 +69,7 @@ export default function AddToPlaylistModal({
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/music/playlists/${playlistId}/add-music/`,
+        `${API_BASE_URL}/music/playlists/${playlistId}/add-music/`,
         {
           method: "POST",
           headers: {

@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { API_BASE_URL } from '@/config/api';
 
 type Tab = "artists" | "tickets" | "audit" | "system";
 
@@ -136,7 +137,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        "http://127.0.0.1:8000/accounts/artist-requests/",
+        `${API_BASE_URL}/accounts/artist-requests/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -158,7 +159,7 @@ export default function DashboardPage() {
     setTicketError(null);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch("http://127.0.0.1:8000/ticket/tickets/", {
+      const res = await fetch(`${API_BASE_URL}/ticket/tickets/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -179,7 +180,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/ticket/tickets/${ticketId}/messages/`,
+        `${API_BASE_URL}/ticket/tickets/${ticketId}/messages/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -206,7 +207,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/ticket/tickets/${activeTicket.id}/messages/create/`,
+        `${API_BASE_URL}/ticket/tickets/${activeTicket.id}/messages/create/`,
         {
           method: "POST",
           headers: {
@@ -250,7 +251,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        "http://127.0.0.1:8000/subscriptions/admin/dashboard/stats/",
+        `${API_BASE_URL}/subscriptions/admin/dashboard/stats/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -276,7 +277,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        "http://127.0.0.1:8000/subscriptions/admin/plans/",
+        `${API_BASE_URL}/subscriptions/admin/plans/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -321,7 +322,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/subscriptions/admin/subscription-prices/${priceId}/`,
+        `${API_BASE_URL}/subscriptions/admin/subscription-prices/${priceId}/`,
         {
           method: "PATCH",
           headers: {
@@ -352,7 +353,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("access_token");
       const res = await fetch(
-        `http://127.0.0.1:8000/accounts/artist-requests/${id}/`,
+        `${API_BASE_URL}/accounts/artist-requests/${id}/`,
         {
           method: "PATCH",
           headers: {
@@ -380,7 +381,7 @@ export default function DashboardPage() {
       try {
         const token = localStorage.getItem("access_token");
         const res = await fetch(
-          `http://127.0.0.1:8000/accounts/artist-requests/${id}/`,
+          `${API_BASE_URL}/accounts/artist-requests/${id}/`,
           {
             method: "PATCH",
             headers: {
